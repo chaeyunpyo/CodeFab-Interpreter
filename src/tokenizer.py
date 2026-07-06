@@ -55,6 +55,10 @@ class Tokenizer:
                 self._scan_string()
                 continue
 
+            if ch == "/" and self.source[self.current + 1:self.current + 2] == "/":
+                self._skip_line_comment()
+                continue
+
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
             self.current += 1
 
@@ -99,3 +103,7 @@ class Tokenizer:
         self.current += 1
         lexeme = self.source[start:self.current]
         self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1]))
+
+    def _skip_line_comment(self):
+        while self.current < len(self.source) and self.source[self.current] != "\n":
+            self.current += 1

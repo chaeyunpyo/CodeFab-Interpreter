@@ -182,3 +182,16 @@ def test_step11_extra_keywords(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 12단계: 강사님 git page 참고
+def test_step12_line_comment_is_ignored():
+    """문서의 모든 예시가 `// ...` 한 줄 주석을 사용하므로, 주석은 토큰을 만들지 않고 무시되어야 한다."""
+    tokenizer = Tokenizer('// expect: 7\nprint 1;')
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.PRINT, "print"),
+        Token(TokenType.NUMBER, "1", literal=1.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
