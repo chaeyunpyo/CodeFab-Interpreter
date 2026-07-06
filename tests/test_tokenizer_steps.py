@@ -32,3 +32,12 @@ def test_step2_single_left_paren():
         Token(TokenType.LEFT_PAREN, "("),
         Token(TokenType.EOF, ""),
     ]
+
+def test_step2_single_plus():
+    tokenizer = Tokenizer("+")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.PLUS, "+"),
+        Token(TokenType.EOF, ""),
+    ]

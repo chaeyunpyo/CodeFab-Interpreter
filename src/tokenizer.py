@@ -5,6 +5,7 @@ from src.nodes.token_type import TokenType
 class Tokenizer:
     SINGLE_CHAR_TOKENS = {
         "(": TokenType.LEFT_PAREN,
+        "+": TokenType.PLUS,
     }
 
     def __init__(self, source: str):
