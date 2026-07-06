@@ -30,6 +30,10 @@ class Tokenizer:
                 self._scan_number()
                 continue
 
+            if ch.isalpha() or ch == "_":
+                self._scan_identifier()
+                continue
+
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
             self.current += 1
 
@@ -53,3 +57,13 @@ class Tokenizer:
 
         lexeme = self.source[start:self.current]
         self.tokens.append(Token(TokenType.NUMBER, lexeme, literal=float(lexeme)))
+
+    def _scan_identifier(self):
+        start = self.current
+        while self.current < len(self.source) and (
+            self.source[self.current].isalnum() or self.source[self.current] == "_"
+        ):
+            self.current += 1
+
+        lexeme = self.source[start:self.current]
+        self.tokens.append(Token(TokenType.IDENTIFIER, lexeme))

@@ -88,3 +88,14 @@ def test_step5_decimal_number():
         Token(TokenType.NUMBER, "3.14", literal=3.14),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 6단계: 식별자 ---
+
+def test_step6_single_identifier():
+    tokenizer = Tokenizer("num")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.IDENTIFIER, "num"),
+        Token(TokenType.EOF, ""),
+    ]
