@@ -1,7 +1,5 @@
-import pytest
-
 from checker.checker import CheckerUnit
-from nodes.stmt import ExpressionStmt, VarDeclStmt
+from nodes.stmt import BlockStmt, ExpressionStmt, VarDeclStmt
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
@@ -37,15 +35,45 @@ def test_accepts_mixed_statement_types():
     assert isinstance(checker.statements[1], ExpressionStmt)
 
 
-def test_check_raises_not_implemented_with_empty_statements():
+def test_check_returns_no_errors_when_empty():
     checker = CheckerUnit([])
 
-    with pytest.raises(NotImplementedError):
-        checker.check()
+    assert checker.check() == []
 
 
-def test_check_raises_not_implemented_with_statements():
+def test_check_returns_no_errors_for_single_declaration():
     checker = CheckerUnit([make_var_decl("a")])
 
-    with pytest.raises(NotImplementedError):
-        checker.check()
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_in_same_block():
+    statements = [make_var_decl("a"), make_var_decl("a")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert "a" in errors[0].message
+
+
+def test_check_allows_same_name_in_nested_block():
+    statements = [
+        make_var_decl("a"),
+        BlockStmt(statements=[make_var_decl("a")]),
+    ]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_inside_nested_block():
+    statements = [
+        BlockStmt(statements=[make_var_decl("a"), make_var_decl("a")]),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert "a" in errors[0].message
