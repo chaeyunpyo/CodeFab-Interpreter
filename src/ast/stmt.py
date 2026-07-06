@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from codefab.ast.expr import Expr
-from codefab.token import Token
+from ast.expr import Expr
+from ast.token import Token
 
 
 class Stmt:

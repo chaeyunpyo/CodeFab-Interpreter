@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from codefab.token import Token
+from ast.token import Token
 
 
 class Expr:

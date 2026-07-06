@@ -1,4 +1,4 @@
-from codefab.ast.expr import (
+from ast.expr import (
     AssignExpr,
     BinaryExpr,
     Expr,
@@ -8,7 +8,7 @@ from codefab.ast.expr import (
     UnaryExpr,
     VariableExpr,
 )
-from codefab.ast.stmt import (
+from ast.stmt import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
