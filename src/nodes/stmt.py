@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from ast.expr import Expr
-from ast.token import Token
+from expr import Expr
+from tokens import Token
 
 
 class Stmt:

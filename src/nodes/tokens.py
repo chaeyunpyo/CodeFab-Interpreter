@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from ast.token_type import TokenType
+from token_type import TokenType
 
 
 @dataclass
