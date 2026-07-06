@@ -1,5 +1,5 @@
-from nodes.tokens import Token
-from nodes.token_type import TokenType
+from src.nodes.tokens import Token
+from src.nodes.token_type import TokenType
 
 
 class Tokenizer:
@@ -12,4 +12,4 @@ class Tokenizer:
 
     def tokenize(self):
         # TODO: 실제 스캔 로직 구현
-        return []
+        return [Token(TokenType.EOF, "")]

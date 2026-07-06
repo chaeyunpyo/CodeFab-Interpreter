@@ -1,12 +1,3 @@
-# tests/test_tokenizer_steps.py
-"""
-TDD 연습용 단계별 테스트.
-아래로 내려갈수록 난이도가 올라간다.
-한 단계씩 Red -> Green을 만들고 나서 다음 단계로 넘어갈 것.
-
-아직 tokenizer.py(=Tokenizer 클래스)가 없으므로 지금은 전부 Red 상태가 정상이다.
-src/tokenizer.py 에 Tokenizer를 만들어가면서 하나씩 Green으로 바꾸면 된다.
-"""
 import pytest
 from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
@@ -21,4 +12,11 @@ def test_step0_token_equality():
     b = Token(TokenType.PLUS, "+")
     assert a == b
 
+# --- 1단계: 아무것도 없는 입력 ---
 
+def test_step1_empty_source_returns_only_eof():
+    """빈 문자열을 넣으면 EOF 토큰 하나만 나와야 한다."""
+    tokenizer = Tokenizer("")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [Token(TokenType.EOF, "")]
