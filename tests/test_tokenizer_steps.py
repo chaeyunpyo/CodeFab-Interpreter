@@ -20,3 +20,15 @@ def test_step1_empty_source_returns_only_eof():
     tokens = tokenizer.tokenize()
 
     assert tokens == [Token(TokenType.EOF, "")]
+
+# --- 2단계: 단일 문자 기호 하나 ---
+
+def test_step2_single_left_paren():
+    """가장 단순한 토큰 하나: '(' """
+    tokenizer = Tokenizer("(")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.EOF, ""),
+    ]
