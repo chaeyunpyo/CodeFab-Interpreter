@@ -9,6 +9,8 @@ class Tokenizer:
         "{": TokenType.LEFT_BRACE,
         "}": TokenType.RIGHT_BRACE,
         "+": TokenType.PLUS,
+        "=": TokenType.EQUAL,
+        ";": TokenType.SEMICOLON,
     }
 
     KEYWORDS = {

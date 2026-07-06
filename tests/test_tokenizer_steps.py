@@ -121,3 +121,19 @@ def test_step8_string_literal():
         Token(TokenType.STRING, '"hi"', literal="hi"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 9단계: 여러 종류를 합친 최소 문장 ---
+
+def test_step9_minimal_statement():
+    """var a = 3; 정도의 조합"""
+    tokenizer = Tokenizer("var a = 3;")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.IDENTIFIER, "a"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
