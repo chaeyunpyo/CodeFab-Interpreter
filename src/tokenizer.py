@@ -5,6 +5,9 @@ from src.nodes.token_type import TokenType
 class Tokenizer:
     SINGLE_CHAR_TOKENS = {
         "(": TokenType.LEFT_PAREN,
+        ")": TokenType.RIGHT_PAREN,
+        "{": TokenType.LEFT_BRACE,
+        "}": TokenType.RIGHT_BRACE,
         "+": TokenType.PLUS,
     }
 

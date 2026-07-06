@@ -41,3 +41,17 @@ def test_step2_single_plus():
         Token(TokenType.PLUS, "+"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 3단계: 단일 문자 기호 여러 개 ---
+
+def test_step3_multiple_single_char_tokens():
+    tokenizer = Tokenizer("(){}")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.EOF, ""),
+    ]
