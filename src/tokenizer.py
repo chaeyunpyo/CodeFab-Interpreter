@@ -18,6 +18,12 @@ class Tokenizer:
         ";": TokenType.SEMICOLON,
     }
 
+    TWO_CHAR_TOKENS = {
+        "==": TokenType.EQUAL_EQUAL,
+        ">=": TokenType.GREATER_EQUAL,
+        "<=": TokenType.LESS_EQUAL,
+    }
+
     KEYWORDS = {
         "var": TokenType.VAR,
         "print": TokenType.PRINT,
@@ -57,6 +63,12 @@ class Tokenizer:
 
             if ch == "/" and self.source[self.current + 1:self.current + 2] == "/":
                 self._skip_line_comment()
+                continue
+
+            two_chars = self.source[self.current:self.current + 2]
+            if two_chars in self.TWO_CHAR_TOKENS:
+                self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars))
+                self.current += 2
                 continue
 
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
