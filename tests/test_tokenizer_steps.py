@@ -55,3 +55,16 @@ def test_step3_multiple_single_char_tokens():
         Token(TokenType.RIGHT_BRACE, "}"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 4단계: 공백 무시 ---
+
+def test_step4_whitespace_between_tokens_is_ignored():
+    tokenizer = Tokenizer("( )")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.EOF, ""),
+    ]
+

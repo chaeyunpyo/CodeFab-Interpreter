@@ -20,6 +20,8 @@ class Tokenizer:
 
     def tokenize(self):
         for ch in self.source:
+            if ch.isspace():
+                continue
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
 
         self.tokens.append(Token(TokenType.EOF, ""))
