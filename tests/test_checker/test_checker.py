@@ -120,3 +120,29 @@ def test_check_detects_self_reference_even_when_outer_scope_has_same_name():
 
     assert len(errors) == 1
     assert errors[0].message == "Can't read local variable in initializer."
+
+def test_check_does_not_crash_when_initializer_is_not_an_expr_node():
+    # Expr이 아닌 초기화식이 와도 죽지 않아야 한다.
+    broken_initializer = "a"
+    checker = CheckerUnit([make_var_decl("a", broken_initializer)])
+
+    assert checker.check() == []
+
+
+def test_check_does_not_crash_when_var_decl_name_token_is_missing():
+    # name 토큰이 없어도(None) 죽지 않아야 한다.
+    broken_statement = VarDeclStmt(name=None, initializer=None)
+    checker = CheckerUnit([broken_statement])
+
+    assert checker.check() == []
+
+
+def test_check_does_not_crash_on_self_referencing_block():
+    # 블록이 자기 자신을 포함하는 순환 참조에도 죽지 않아야 한다.
+    cyclic_block = BlockStmt(statements=[])
+    cyclic_block.statements.append(cyclic_block)
+    checker = CheckerUnit([cyclic_block])
+
+    errors = checker.check()
+
+    assert isinstance(errors, list)
