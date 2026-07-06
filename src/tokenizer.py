@@ -19,10 +19,37 @@ class Tokenizer:
         self.tokens = []
 
     def tokenize(self):
-        for ch in self.source:
+        while self.current < len(self.source):
+            ch = self.source[self.current]
+
             if ch.isspace():
+                self.current += 1
                 continue
+
+            if ch.isdigit():
+                self._scan_number()
+                continue
+
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
+            self.current += 1
 
         self.tokens.append(Token(TokenType.EOF, ""))
         return self.tokens
+
+    def _scan_number(self):
+        start = self.current
+        while self.current < len(self.source) and self.source[self.current].isdigit():
+            self.current += 1
+
+        if (
+            self.current < len(self.source)
+            and self.source[self.current] == "."
+            and self.current + 1 < len(self.source)
+            and self.source[self.current + 1].isdigit()
+        ):
+            self.current += 1
+            while self.current < len(self.source) and self.source[self.current].isdigit():
+                self.current += 1
+
+        lexeme = self.source[start:self.current]
+        self.tokens.append(Token(TokenType.NUMBER, lexeme, literal=float(lexeme)))

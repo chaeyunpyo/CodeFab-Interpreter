@@ -68,3 +68,23 @@ def test_step4_whitespace_between_tokens_is_ignored():
         Token(TokenType.EOF, ""),
     ]
 
+# --- 5단계: 숫자 리터럴 (literal 필드에 float 값이 채워져야 한다) ---
+
+def test_step5_single_digit_number():
+    tokenizer = Tokenizer("7")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.NUMBER, "7", literal=7.0),
+        Token(TokenType.EOF, ""),
+    ]
+
+
+def test_step5_decimal_number():
+    tokenizer = Tokenizer("3.14")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.NUMBER, "3.14", literal=3.14),
+        Token(TokenType.EOF, ""),
+    ]
