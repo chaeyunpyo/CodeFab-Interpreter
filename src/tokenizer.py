@@ -9,6 +9,11 @@ class Tokenizer:
         "{": TokenType.LEFT_BRACE,
         "}": TokenType.RIGHT_BRACE,
         "+": TokenType.PLUS,
+        "-": TokenType.MINUS,
+        "*": TokenType.STAR,
+        "/": TokenType.SLASH,
+        "<": TokenType.LESS,
+        ">": TokenType.GREATER,
         "=": TokenType.EQUAL,
         ";": TokenType.SEMICOLON,
     }

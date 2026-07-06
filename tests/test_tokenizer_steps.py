@@ -137,3 +137,26 @@ def test_step9_minimal_statement():
         Token(TokenType.SEMICOLON, ";"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 10단계: 강사님 git page 참고
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("-", TokenType.MINUS),   # -3 + 2, a - b
+        ("*", TokenType.STAR),    # 2 * 3
+        ("/", TokenType.SLASH),   # 8 / 2
+        ("<", TokenType.LESS),    # 1 < 2
+        (">", TokenType.GREATER),  # 3 > 5
+    ],
+)
+def test_step10_extra_single_char_operators(source, expected_type):
+    """산술/비교 연산자 문서 예시에 등장하는 단일 문자 기호들."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
+
