@@ -160,3 +160,25 @@ def test_step10_extra_single_char_operators(source, expected_type):
         Token(TokenType.EOF, ""),
     ]
 
+# --- 11단계: 강사님 git page 참고
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("print", TokenType.PRINT),  # print 1 + 2 * 3;
+        ("if", TokenType.IF),        # if (true) print "bbq";
+        ("else", TokenType.ELSE),    # if (false) print "no"; else print "kfc";
+        ("for", TokenType.FOR),      # for (var j = 0; j < 3; j = j + 1) { ... }
+        ("true", TokenType.TRUE),    # print true;
+        ("false", TokenType.FALSE),  # print false;
+    ],
+)
+def test_step11_extra_keywords(source, expected_type):
+    """문서 예시 스크립트에서 쓰이는 예약어들 (IDENTIFIER가 아닌 전용 타입이어야 한다)."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]

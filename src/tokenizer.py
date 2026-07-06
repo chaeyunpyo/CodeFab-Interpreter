@@ -20,6 +20,12 @@ class Tokenizer:
 
     KEYWORDS = {
         "var": TokenType.VAR,
+        "print": TokenType.PRINT,
+        "if": TokenType.IF,
+        "else": TokenType.ELSE,
+        "for": TokenType.FOR,
+        "true": TokenType.TRUE,
+        "false": TokenType.FALSE,
     }
 
     def __init__(self, source: str):
