@@ -103,9 +103,9 @@ def test_check_detects_self_reference_in_initializer():
     assert errors[0].message == "Can't read local variable in initializer."
 
 
-def test_check_allows_initializer_referencing_outer_variable_with_same_name():
-    # var a = 1; { var a = a; } -- outer `a` is a different variable, so this
-    # specific self-reference rule (same-block-only) should not flag it.
+def test_check_detects_self_reference_even_when_outer_scope_has_same_name():
+    # var a = 1; { var a = a; } -- the local `a` shadows the outer one, so the
+    # initializer still reads the not-yet-initialized local `a`.
     statements = [
         make_var_decl("a", LiteralExpr(1)),
         BlockStmt(
