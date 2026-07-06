@@ -99,3 +99,15 @@ def test_step6_single_identifier():
         Token(TokenType.IDENTIFIER, "num"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 7단계: 키워드 (예약어는 IDENTIFIER가 아니라 전용 타입이어야 한다) ---
+
+def test_step7_keyword_var():
+    tokenizer = Tokenizer("var")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.EOF, ""),
+    ]
+

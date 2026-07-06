@@ -11,6 +11,10 @@ class Tokenizer:
         "+": TokenType.PLUS,
     }
 
+    KEYWORDS = {
+        "var": TokenType.VAR,
+    }
+
     def __init__(self, source: str):
         self.source = source
         self.start = 0
@@ -66,4 +70,5 @@ class Tokenizer:
             self.current += 1
 
         lexeme = self.source[start:self.current]
-        self.tokens.append(Token(TokenType.IDENTIFIER, lexeme))
+        token_type = self.KEYWORDS.get(lexeme, TokenType.IDENTIFIER)
+        self.tokens.append(Token(token_type, lexeme))
