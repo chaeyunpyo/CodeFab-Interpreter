@@ -1,11 +1,12 @@
 from checker.checker import CheckerUnit
+from nodes.expr import LiteralExpr, VariableExpr
 from nodes.stmt import BlockStmt, ExpressionStmt, VarDeclStmt
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
 
-def make_var_decl(name: str = "a") -> VarDeclStmt:
-    return VarDeclStmt(name=Token(TokenType.IDENTIFIER, name), initializer=None)
+def make_var_decl(name: str = "a", initializer=None) -> VarDeclStmt:
+    return VarDeclStmt(name=Token(TokenType.IDENTIFIER, name), initializer=initializer)
 
 
 def test_stores_empty_statements():
@@ -54,7 +55,7 @@ def test_check_detects_duplicate_declaration_in_same_block():
     errors = checker.check()
 
     assert len(errors) == 1
-    assert "a" in errors[0].message
+    assert errors[0].message == "Already a variable with this name in this scope."
 
 
 def test_check_allows_same_name_in_nested_block():
@@ -68,12 +69,54 @@ def test_check_allows_same_name_in_nested_block():
 
 
 def test_check_detects_duplicate_declaration_inside_nested_block():
+    # { var a = "hi"; var a = 3; }
     statements = [
-        BlockStmt(statements=[make_var_decl("a"), make_var_decl("a")]),
+        BlockStmt(
+            statements=[
+                make_var_decl("a", LiteralExpr("hi")),
+                make_var_decl("a", LiteralExpr(3)),
+            ]
+        ),
     ]
     checker = CheckerUnit(statements)
 
     errors = checker.check()
 
     assert len(errors) == 1
-    assert "a" in errors[0].message
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_self_reference_in_initializer():
+    # { var a = a; }
+    statements = [
+        BlockStmt(
+            statements=[
+                make_var_decl("a", VariableExpr(Token(TokenType.IDENTIFIER, "a"))),
+            ]
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't read local variable in initializer."
+
+
+def test_check_allows_initializer_referencing_outer_variable_with_same_name():
+    # var a = 1; { var a = a; } -- outer `a` is a different variable, so this
+    # specific self-reference rule (same-block-only) should not flag it.
+    statements = [
+        make_var_decl("a", LiteralExpr(1)),
+        BlockStmt(
+            statements=[
+                make_var_decl("a", VariableExpr(Token(TokenType.IDENTIFIER, "a"))),
+            ]
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't read local variable in initializer."
