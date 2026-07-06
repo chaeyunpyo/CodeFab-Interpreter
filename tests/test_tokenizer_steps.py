@@ -111,3 +111,13 @@ def test_step7_keyword_var():
         Token(TokenType.EOF, ""),
     ]
 
+# --- 8단계: 문자열 리터럴 ---
+
+def test_step8_string_literal():
+    tokenizer = Tokenizer('"hi"')
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.STRING, '"hi"', literal="hi"),
+        Token(TokenType.EOF, ""),
+    ]

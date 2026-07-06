@@ -38,6 +38,10 @@ class Tokenizer:
                 self._scan_identifier()
                 continue
 
+            if ch == '"':
+                self._scan_string()
+                continue
+
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
             self.current += 1
 
@@ -72,3 +76,13 @@ class Tokenizer:
         lexeme = self.source[start:self.current]
         token_type = self.KEYWORDS.get(lexeme, TokenType.IDENTIFIER)
         self.tokens.append(Token(token_type, lexeme))
+
+    def _scan_string(self):
+        start = self.current
+        self.current += 1
+        while self.current < len(self.source) and self.source[self.current] != '"':
+            self.current += 1
+
+        self.current += 1
+        lexeme = self.source[start:self.current]
+        self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1]))
