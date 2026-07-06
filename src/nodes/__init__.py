@@ -1,4 +1,4 @@
-from ast.expr import (
+from expr import (
     AssignExpr,
     BinaryExpr,
     Expr,
@@ -8,7 +8,7 @@ from ast.expr import (
     UnaryExpr,
     VariableExpr,
 )
-from ast.stmt import (
+from stmt import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
