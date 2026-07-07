@@ -1,7 +1,7 @@
 import pytest
-from src.nodes.tokens import Token
-from src.nodes.token_type import TokenType
-from src.tokenizer import Tokenizer, TokenizerError  # 아직 존재하지 않음 (다음 단계에서 구현)
+from nodes.tokens import Token
+from nodes.token_type import TokenType
+from assembler import Tokenizer, TokenizerError
 
 
 # --- 0단계: Token 객체 자체 (Tokenizer 없이도 통과되어야 하는 기준선) ---

@@ -1,6 +1,6 @@
 import pytest
 
-from storage import Storage
+from executor import Storage
 
 
 @pytest.fixture

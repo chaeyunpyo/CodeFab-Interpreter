@@ -1,5 +1,8 @@
-from src.nodes.token_type import TokenType
-from src.nodes import *
+from nodes.token_type import TokenType
+from nodes import *
+
+from .errors import InvalidAssignmentTargetError, MissingTokenError, UnexpectedTokenError
+
 
 class AstBuilder:
     def __init__(self, tokens):
@@ -43,7 +46,7 @@ class AstBuilder:
     def _consume(self, token_type, message):
         if self._check(token_type):
             return self._advance()
-        raise SyntaxError(message)
+        raise MissingTokenError(message, self._peek())
 
     # --- declarations & statements ---
 
@@ -132,7 +135,7 @@ class AstBuilder:
         expr = self._logic_or()
         if self._match(TokenType.EQUAL):
             if not isinstance(expr, VariableExpr):
-                raise SyntaxError("Invalid assignment target")
+                raise InvalidAssignmentTargetError("Invalid assignment target", self._previous())
             value = self._assignment()
             return AssignExpr(name=expr.name, value=value)
         return expr
@@ -155,7 +158,16 @@ class AstBuilder:
 
     def _comparison(self):
         expr = self._term()
-        while self._match(TokenType.GREATER, TokenType.LESS):
+        while self._match(
+            TokenType.GREATER,
+            TokenType.LESS,
+            TokenType.EQUAL_EQUAL,
+            TokenType.BANG_EQUAL,
+            TokenType.GREATER_EQUAL,
+            TokenType.LESS_EQUAL,
+            TokenType.EQUAL_LESS,
+            TokenType.EQUAL_GREATER,
+        ):
             operator = self._previous()
             right = self._term()
             expr = BinaryExpr(left=expr, operator=operator, right=right)
@@ -178,7 +190,7 @@ class AstBuilder:
         return expr
 
     def _unary(self):
-        if self._match(TokenType.BANG, TokenType.MINUS):
+        if self._match(TokenType.BANG, TokenType.MINUS, TokenType.PLUS):
             operator = self._previous()
             right = self._unary()
             return UnaryExpr(operator=operator, right=right)
@@ -198,4 +210,4 @@ class AstBuilder:
             self._consume(TokenType.RIGHT_PAREN, "Expected ')' after expression")
             return GroupingExpr(expression=expr)
 
-        raise SyntaxError(f"Unexpected token: {self._peek()}")
+        raise UnexpectedTokenError(f"Unexpected token: {self._peek()}", self._peek())

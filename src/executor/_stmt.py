@@ -9,7 +9,7 @@ from nodes import (
     Stmt,
     VarDeclStmt,
 )
-from storage import Storage
+from ._storage import Storage
 
 from ._expr import evaluate, stringify
 

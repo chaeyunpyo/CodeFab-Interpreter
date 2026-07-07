@@ -1,10 +1,9 @@
 import pytest
 
-from executor import evaluate, execute
+from executor import UndefinedVariableError, evaluate, execute
 from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
 from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, Stmt, VarDeclStmt
 from nodes.token_type import TokenType
-from storage import UndefinedVariableError
 
 from helpers import tok
 
@@ -343,3 +342,66 @@ class TestExecuteNestedForStmt:
         ))]
         execute(make_for("i", 0.0, 3.0, [make_for("j", 0.0, 3.0, inner_body)]), storage)
         assert storage.get("sum_j") == pytest.approx(9.0)  # 3 * (0+1+2)
+
+
+# ── 통합 테스트 : for → if → print ────────────────────────────────────────────
+
+class TestExecuteForIfPrintIntegration:
+    def test_for_안에서_if_조건을_만족할_때만_print가_실행된다(self, storage, capsys):
+        # for (i=0; i<5; i=i+1) { if (i > 2) print i; }
+        body = [IfStmt(greater_than("i", 2.0), PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i"))))]
+        execute(make_for("i", 0.0, 5.0, body), storage)
+        assert capsys.readouterr().out == "3\n4\n"
+
+    def test_for_안의_if_else_분기가_매_iteration마다_동작한다(self, storage, capsys):
+        # for (i=0; i<3; i=i+1) { if (i > 0) print i; else print "zero"; }
+        then_branch = PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i")))
+        else_branch = PrintStmt(LiteralExpr("zero"))
+        body = [IfStmt(greater_than("i", 0.0), then_branch, else_branch)]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert capsys.readouterr().out == "zero\n1\n2\n"
+
+    def test_if_조건이_한번도_참이_아니면_아무것도_출력되지_않는다(self, storage, capsys):
+        body = [IfStmt(greater_than("i", 10.0), PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i"))))]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert capsys.readouterr().out == ""
+
+    def test_for_안의_if_내부에서_바깥_스코프_변수를_누적한다(self, storage):
+        # for (i=0; i<5; i=i+1) { if (i > 2) count = count + 1; }
+        storage.define("count", 0.0)
+        body = [IfStmt(greater_than("i", 2.0), add_to("count", 1.0))]
+        execute(make_for("i", 0.0, 5.0, body), storage)
+        assert storage.get("count") == 2.0  # i=3, i=4 두 번
+
+
+# ── 통합 테스트 : if → for → print ────────────────────────────────────────────
+
+class TestExecuteIfForPrintIntegration:
+    def test_조건이_참이면_then_branch의_for_루프가_실행되어_print한다(self, storage, capsys):
+        # if (x > 0) { for (i=0; i<3; i=i+1) print i; }
+        storage.define("x", 10.0)
+        then_branch = BlockStmt([make_for("i", 0.0, 3.0, [PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i")))])])
+        execute(IfStmt(greater_than("x", 0.0), then_branch), storage)
+        assert capsys.readouterr().out == "0\n1\n2\n"
+
+    def test_조건이_거짓이고_else가_없으면_for_루프가_실행되지_않는다(self, storage, capsys):
+        storage.define("x", -1.0)
+        then_branch = BlockStmt([make_for("i", 0.0, 3.0, [PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i")))])])
+        execute(IfStmt(greater_than("x", 0.0), then_branch), storage)
+        assert capsys.readouterr().out == ""
+
+    def test_조건이_거짓이면_else_branch의_for_루프가_대신_실행된다(self, storage, capsys):
+        # if (x > 0) print "positive"; else { for (i=0; i<2; i=i+1) print i; }
+        storage.define("x", -1.0)
+        then_branch = PrintStmt(LiteralExpr("positive"))
+        else_branch = BlockStmt([make_for("i", 0.0, 2.0, [PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i")))])])
+        execute(IfStmt(greater_than("x", 0.0), then_branch, else_branch), storage)
+        assert capsys.readouterr().out == "0\n1\n"
+
+    def test_if_안의_for_루프가_바깥_스코프_변수를_누적한다(self, storage):
+        # if (x > 0) { for (i=0; i<5; i=i+1) count = count + 1; }
+        storage.define("x", 10.0)
+        storage.define("count", 0.0)
+        then_branch = BlockStmt([make_for("i", 0.0, 5.0, [add_to("count", 1.0)])])
+        execute(IfStmt(greater_than("x", 0.0), then_branch), storage)
+        assert storage.get("count") == 5.0
