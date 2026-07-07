@@ -58,6 +58,17 @@ def test_check_detects_duplicate_declaration_in_same_block():
     assert len(errors) == 1
     assert errors[0].message == "Already a variable with this name in this scope."
 
+
+def test_check_error_str_includes_line_number():
+    first = VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=3), initializer=None)
+    second = VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=5), initializer=None)
+    checker = CheckerUnit([first, second])
+
+    errors = checker.check()
+
+    assert str(errors[0]) == "[Line 5] Already a variable with this name in this scope."
+
+
 # 변수 중복 선언 검사
 
 def test_check_allows_same_name_in_nested_block():
