@@ -108,6 +108,13 @@ _NUMERIC_BINARY_OPS: Dict[TokenType, Callable[[Any, Any], Any]] = {
     TokenType.STAR: operator.mul,
     TokenType.GREATER: operator.gt,
     TokenType.LESS: operator.lt,
+    TokenType.GREATER_EQUAL: operator.ge,
+    TokenType.LESS_EQUAL: operator.le,
+    # EQUAL_GREATER("=>")/EQUAL_LESS("=<")는 GREATER_EQUAL/LESS_EQUAL과 의미가 같은 별칭 토큰이다.
+    TokenType.EQUAL_GREATER: operator.ge,
+    TokenType.EQUAL_LESS: operator.le,
+    TokenType.EQUAL_EQUAL: operator.eq,
+    TokenType.BANG_EQUAL: operator.ne,
 }
 
 
