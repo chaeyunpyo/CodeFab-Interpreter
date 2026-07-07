@@ -145,6 +145,26 @@ class TestEvaluateBinaryComparison:
         expr = BinaryExpr(LiteralExpr(1.0), tok(TokenType.LESS, "<"), LiteralExpr(3.0))
         assert evaluate(expr, storage) is True
 
+    def test_크거나_같은_비교가_참인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.GREATER_EQUAL, ">="), LiteralExpr(5.0))
+        assert evaluate(expr, storage) is True
+
+    def test_작거나_같은_비교가_거짓인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.LESS_EQUAL, "<="), LiteralExpr(3.0))
+        assert evaluate(expr, storage) is False
+
+    def test_같거나_큰_비교가_거짓인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.EQUAL_GREATER, "=<"), LiteralExpr(3.0))
+        assert evaluate(expr, storage) is False
+
+    def test_같거나_작은_비교가_참인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.EQUAL_LESS, "=<"), LiteralExpr(6.0))
+        assert evaluate(expr, storage) is True
+
+    def test_같은_비교가_참인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.EQUAL_EQUAL, "=="), LiteralExpr(5.0))
+        assert evaluate(expr, storage) is True
+
 
 class TestEvaluateGrouping:
     def test_괄호_안_값을_그대로_반환한다(self, storage):
