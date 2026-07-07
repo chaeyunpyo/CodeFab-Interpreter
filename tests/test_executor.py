@@ -27,7 +27,7 @@ from nodes.expr import (
     UnaryExpr,
     VariableExpr,
 )
-from nodes.stmt import BlockStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, VarDeclStmt
+from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, Stmt, VarDeclStmt
 from nodes.token_type import TokenType
 from nodes.tokens import Token
 from storage import Storage, UndefinedVariableError
@@ -342,6 +342,40 @@ class TestExecutePrintStmt:
 
 # ── Statement 실행 : if / 중첩 if ────────────────────────────────────────────
 
+def assign_expr_stmt(name: str, expr) -> ExpressionStmt:
+    return ExpressionStmt(AssignExpr(tok(TokenType.IDENTIFIER, name), expr))
+
+
+def add_to(name: str, amount: float) -> ExpressionStmt:
+    """name = name + amount"""
+    return assign_expr_stmt(name, BinaryExpr(
+        VariableExpr(tok(TokenType.IDENTIFIER, name)),
+        tok(TokenType.PLUS, "+"),
+        LiteralExpr(amount),
+    ))
+
+
+def make_for(var: str, start: float, limit: float, body_stmts: list) -> ForStmt:
+    """for (var {var} = {start}; {var} < {limit}; {var} = {var} + 1.0) { body }"""
+    return ForStmt(
+        initializer=VarDeclStmt(tok(TokenType.IDENTIFIER, var), LiteralExpr(start)),
+        condition=BinaryExpr(
+            VariableExpr(tok(TokenType.IDENTIFIER, var)),
+            tok(TokenType.LESS, "<"),
+            LiteralExpr(limit),
+        ),
+        increment=AssignExpr(
+            tok(TokenType.IDENTIFIER, var),
+            BinaryExpr(
+                VariableExpr(tok(TokenType.IDENTIFIER, var)),
+                tok(TokenType.PLUS, "+"),
+                LiteralExpr(1.0),
+            ),
+        ),
+        body=BlockStmt(statements=body_stmts),
+    )
+
+
 def assign_stmt(name: str, value: float) -> ExpressionStmt:
     return ExpressionStmt(AssignExpr(tok(TokenType.IDENTIFIER, name), LiteralExpr(value)))
 
@@ -428,3 +462,121 @@ class TestExecuteNestedIfStmt:
         outer = IfStmt(greater_than("a", 3.0), inner, assign_stmt("y", 3.0))
         execute(outer, storage)
         assert storage.get("y") == 2.0
+
+
+# ── Statement 실행 : for ──────────────────────────────────────────────────────
+
+class TestExecuteForStmt:
+    def test_루프가_정해진_횟수만큼_실행된다(self, storage):
+        execute(make_for("i", 0.0, 5.0, []), storage)
+        assert storage.get("i") == 5.0
+
+    def test_조건이_처음부터_false이면_body가_실행되지_않는다(self, storage):
+        storage.define("executed", 0.0)
+        execute(make_for("i", 0.0, 0.0, [add_to("executed", 1.0)]), storage)
+        assert storage.get("executed") == 0.0
+
+    def test_loop_variable이_매_iteration마다_업데이트된다(self, storage):
+        storage.define("sum", 0.0)
+        body = [assign_expr_stmt("sum", BinaryExpr(
+            VariableExpr(tok(TokenType.IDENTIFIER, "sum")),
+            tok(TokenType.PLUS, "+"),
+            VariableExpr(tok(TokenType.IDENTIFIER, "i")),
+        ))]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert storage.get("sum") == pytest.approx(3.0)  # 0 + 1 + 2
+
+    def test_for_종료_후_loop_variable의_마지막_값이_유지된다(self, storage):
+        execute(make_for("i", 0.0, 3.0, []), storage)
+        assert storage.get("i") == 3.0
+
+    def test_body에서_외부_변수에_assignment를_실행할_수_있다(self, storage):
+        storage.define("last", -1.0)
+        body = [assign_expr_stmt("last", VariableExpr(tok(TokenType.IDENTIFIER, "i")))]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert storage.get("last") == 2.0
+
+    def test_body_실행_횟수가_range_길이와_일치한다(self, storage):
+        storage.define("count", 0.0)
+        execute(make_for("i", 0.0, 4.0, [add_to("count", 1.0)]), storage)
+        assert storage.get("count") == 4.0
+
+    def test_initializer_없이도_동작한다(self, storage):
+        storage.define("i", 0.0)
+        for_stmt = ForStmt(
+            initializer=None,
+            condition=BinaryExpr(
+                VariableExpr(tok(TokenType.IDENTIFIER, "i")),
+                tok(TokenType.LESS, "<"),
+                LiteralExpr(3.0),
+            ),
+            increment=AssignExpr(
+                tok(TokenType.IDENTIFIER, "i"),
+                BinaryExpr(
+                    VariableExpr(tok(TokenType.IDENTIFIER, "i")),
+                    tok(TokenType.PLUS, "+"),
+                    LiteralExpr(1.0),
+                ),
+            ),
+            body=BlockStmt(statements=[]),
+        )
+        execute(for_stmt, storage)
+        assert storage.get("i") == 3.0
+
+    def test_increment_없이_조건이_처음부터_false이면_body가_실행되지_않는다(self, storage):
+        storage.define("ran", 0.0)
+        for_stmt = ForStmt(
+            initializer=VarDeclStmt(tok(TokenType.IDENTIFIER, "i"), LiteralExpr(5.0)),
+            condition=BinaryExpr(
+                VariableExpr(tok(TokenType.IDENTIFIER, "i")),
+                tok(TokenType.LESS, "<"),
+                LiteralExpr(3.0),
+            ),
+            increment=None,
+            body=BlockStmt(statements=[add_to("ran", 1.0)]),
+        )
+        execute(for_stmt, storage)
+        assert storage.get("ran") == 0.0
+
+    def test_body_내부에서_var_선언이_블록_스코프에서_실행된다(self, storage):
+        storage.define("total", 0.0)
+        body = [
+            VarDeclStmt(tok(TokenType.IDENTIFIER, "tmp"), LiteralExpr(10.0)),
+            assign_expr_stmt("total", BinaryExpr(
+                VariableExpr(tok(TokenType.IDENTIFIER, "total")),
+                tok(TokenType.PLUS, "+"),
+                VariableExpr(tok(TokenType.IDENTIFIER, "tmp")),
+            )),
+        ]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert storage.get("total") == 30.0
+
+    def test_body_내부에서_print가_실행된다(self, storage, capsys):
+        body = [PrintStmt(VariableExpr(tok(TokenType.IDENTIFIER, "i")))]
+        execute(make_for("i", 0.0, 3.0, body), storage)
+        assert capsys.readouterr().out == "0\n1\n2\n"
+
+
+class TestExecuteNestedForStmt:
+    def test_nested_for_loop이_가능하다(self, storage):
+        storage.define("count", 0.0)
+        inner_for = make_for("j", 0.0, 3.0, [add_to("count", 1.0)])
+        execute(make_for("i", 0.0, 3.0, [inner_for]), storage)
+        assert storage.get("count") == 9.0
+
+    def test_outer_loop_variable이_유지된다(self, storage):
+        storage.define("count", 0.0)
+        inner_for = make_for("j", 0.0, 2.0, [add_to("count", 1.0)])
+        execute(make_for("i", 0.0, 2.0, [inner_for]), storage)
+        assert storage.get("i") == 2.0
+        assert storage.get("count") == 4.0
+
+    def test_inner_loop_variable이_매_outer_iteration마다_재시작된다(self, storage):
+        storage.define("sum_j", 0.0)
+        inner_body = [assign_expr_stmt("sum_j", BinaryExpr(
+            VariableExpr(tok(TokenType.IDENTIFIER, "sum_j")),
+            tok(TokenType.PLUS, "+"),
+            VariableExpr(tok(TokenType.IDENTIFIER, "j")),
+        ))]
+        execute(make_for("i", 0.0, 3.0, [make_for("j", 0.0, 3.0, inner_body)]), storage)
+        assert storage.get("sum_j") == pytest.approx(9.0)  # 3 * (0+1+2)
