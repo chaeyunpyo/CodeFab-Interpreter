@@ -1,14 +1,10 @@
-from typing import Optional
-
-from nodes.tokens import Token
+from source_error import SourceError
 
 
-class AssemblerError(Exception):
+class AssemblerError(SourceError):
     """Assembler Unit(토큰화 + 파싱) 중 발생하는 오류의 최상위 타입. (PDF p.66)"""
 
-    def __init__(self, message: str, token: Optional[Token] = None):
-        super().__init__(message)
-        self.token = token
+    UNIT = "Assembler"
 
 
 class TokenizerError(AssemblerError):
