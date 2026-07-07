@@ -1,9 +1,14 @@
 import pytest
 
-from src.nodes.tokens import Token
-from src.nodes.token_type import TokenType
-from src.nodes import *
-from src.ast_builder import AstBuilder
+from nodes.tokens import Token
+from nodes.token_type import TokenType
+from nodes import *
+from assembler import (
+    AstBuilder,
+    InvalidAssignmentTargetError,
+    MissingTokenError,
+    UnexpectedTokenError,
+)
 
 
 # --- 0단계: 빈 토큰 스트림 (EOF만 있는 경우) ---
@@ -80,6 +85,36 @@ def test_step3_operator_precedence():
                     operator=Token(TokenType.STAR, "*"),
                     right=LiteralExpr(3.0),
                 ),
+            )
+        )
+    ]
+
+
+# --- 3-1단계: 단항 연산자 (PDF p.36: !, +, -) ---
+
+@pytest.mark.parametrize(
+    "token_type, lexeme",
+    [
+        (TokenType.BANG, "!"),
+        (TokenType.MINUS, "-"),
+        (TokenType.PLUS, "+"),
+    ],
+)
+def test_step3_1_unary_operators_build_unary_expr(token_type, lexeme):
+    """소스코드: !3;  /  -3;  /  +3;"""
+    tokens = [
+        Token(token_type, lexeme),
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=UnaryExpr(
+                operator=Token(token_type, lexeme),
+                right=LiteralExpr(3.0),
             )
         )
     ]
@@ -192,9 +227,44 @@ def test_step7_conditional_and_block():
     ]
 
 
-# --- 8단계: 예외 처리 검증 (세미콜론 누락) ---
+# --- 7-1단계: 추가 비교 연산자 (==, !=, >=, <=, =<, =>) ---
 
-def test_step8_syntax_error_missing_semicolon():
+@pytest.mark.parametrize(
+    "token_type, lexeme",
+    [
+        (TokenType.EQUAL_EQUAL, "=="),
+        (TokenType.BANG_EQUAL, "!="),
+        (TokenType.GREATER_EQUAL, ">="),
+        (TokenType.LESS_EQUAL, "<="),
+        (TokenType.EQUAL_LESS, "=<"),
+        (TokenType.EQUAL_GREATER, "=>"),
+    ],
+)
+def test_step7_1_extended_comparison_operators_build_binary_expr(token_type, lexeme):
+    """소스코드: a == b;  /  a != b;  /  a >= b;  /  a <= b;  /  a =< b;  /  a => b;"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "a"),
+        Token(token_type, lexeme),
+        Token(TokenType.IDENTIFIER, "b"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=BinaryExpr(
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
+                operator=Token(token_type, lexeme),
+                right=VariableExpr(Token(TokenType.IDENTIFIER, "b")),
+            )
+        )
+    ]
+
+
+# --- 8단계: 예외 처리 검증 (세미콜론 누락, 잘못된 대입 대상, 해석 불가 토큰) ---
+
+def test_step8_missing_token_error_missing_semicolon():
     """소스코드: var a = 3  (세미콜론 없음)"""
     tokens = [
         Token(TokenType.VAR, "var"),
@@ -205,7 +275,46 @@ def test_step8_syntax_error_missing_semicolon():
     ]
     builder = AstBuilder(tokens)
 
-    with pytest.raises(SyntaxError) as excinfo:
+    with pytest.raises(MissingTokenError) as excinfo:
         builder.build()
 
     assert "Expected ';' after variable declaration" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.EOF, "")
+
+
+def test_step8_invalid_assignment_target_error():
+    """소스코드: 3 = 5;"""
+    tokens = [
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "5", literal=5.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(InvalidAssignmentTargetError) as excinfo:
+        builder.build()
+
+    assert "Invalid assignment target" in str(excinfo.value)
+
+
+def test_step8_unexpected_token_error():
+    """소스코드: *3; (이항 연산자 *로는 표현식을 시작할 수 없음)
+
+    SEMICOLON은 향후 빈 문장(empty statement)으로 허용될 수도 있어
+    "해석 불가 토큰"의 예시로 부적합하다. STAR는 어떤 문법 규칙으로도
+    표현식의 시작이 될 수 없으므로 이 값을 사용한다.
+    """
+    tokens = [
+        Token(TokenType.STAR, "*"),
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(UnexpectedTokenError) as excinfo:
+        builder.build()
+
+    assert "Unexpected token" in str(excinfo.value)
