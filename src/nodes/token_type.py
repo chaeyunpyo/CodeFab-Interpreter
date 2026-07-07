@@ -19,6 +19,11 @@ class TokenType(Enum):
     EQUAL = auto()
     GREATER = auto()
     LESS = auto()
+    EQUAL_EQUAL = auto()
+    GREATER_EQUAL = auto()
+    LESS_EQUAL = auto()
+    EQUAL_LESS = auto()
+    EQUAL_GREATER = auto()
 
     # 단항 연산자 (PDF p.36 - Unary Expression: !, +, -)
     BANG = auto()
