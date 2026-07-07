@@ -14,6 +14,10 @@ class CheckerError(Exception):
         self.message = message
         self.token = token
 
+    def __str__(self):
+        # print(error)를 하면 몇 번째 줄에서 발생한 오류인지 같이 보여준다.
+        return f"[Line {self.token.line}] {self.message}"
+
 
 class ExprNameFinder:
     """Expr 안에서 특정 변수 이름을 쓰는 곳이 있는지 찾는다."""
