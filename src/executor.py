@@ -16,6 +16,7 @@ from nodes import (
     BlockStmt,
     Expr,
     ExpressionStmt,
+    ForStmt,
     GroupingExpr,
     IfStmt,
     LiteralExpr,
@@ -181,12 +182,26 @@ def _execute_if_stmt(stmt: IfStmt, storage: Storage) -> None:
         execute(stmt.else_branch, storage)
 
 
+def _execute_for_stmt(stmt: ForStmt, storage: Storage) -> None:
+    """C-style ForStmt를 실행한다. for (initializer; condition; increment) body"""
+    if stmt.initializer is not None:
+        execute(stmt.initializer, storage)
+    while True:
+        if stmt.condition is not None:
+            if not evaluate(stmt.condition, storage):
+                break
+        execute(stmt.body, storage)
+        if stmt.increment is not None:
+            evaluate(stmt.increment, storage)
+
+
 _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ExpressionStmt: _execute_expression_stmt,
     PrintStmt: _execute_print_stmt,
     VarDeclStmt: _execute_var_decl_stmt,
     BlockStmt: _execute_block_stmt,
     IfStmt: _execute_if_stmt,
+    ForStmt: _execute_for_stmt,
 }
 
 
