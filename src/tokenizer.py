@@ -16,6 +16,7 @@ class Tokenizer:
         ">": TokenType.GREATER,
         "=": TokenType.EQUAL,
         ";": TokenType.SEMICOLON,
+        "!": TokenType.BANG,
     }
 
     TWO_CHAR_TOKENS = {

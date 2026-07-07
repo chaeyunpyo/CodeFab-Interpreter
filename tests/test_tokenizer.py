@@ -253,3 +253,15 @@ def test_step15_logical_keywords(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 16단계: 단항 부정 연산자 (!) ---
+
+def test_step16_single_bang():
+    """!true 처럼 논리 부정(NOT)에 쓰이는 '!' 하나."""
+    tokenizer = Tokenizer("!")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.BANG, "!"),
+        Token(TokenType.EOF, ""),
+    ]
