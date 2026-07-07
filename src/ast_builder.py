@@ -60,6 +60,8 @@ class AstBuilder:
         return VarDeclStmt(name=name, initializer=initializer)
 
     def _statement(self):
+        if self._match(TokenType.FOR):
+            return self._for_statement()
         if self._match(TokenType.IF):
             return self._if_statement()
         if self._match(TokenType.PRINT):
@@ -67,6 +69,30 @@ class AstBuilder:
         if self._match(TokenType.LEFT_BRACE):
             return BlockStmt(statements=self._block())
         return self._expression_statement()
+
+    def _for_statement(self):
+        self._consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'")
+
+        if self._match(TokenType.SEMICOLON):
+            initializer = None
+        elif self._match(TokenType.VAR):
+            initializer = self._var_declaration()
+        else:
+            initializer = self._expression_statement()
+
+        condition = None
+        if not self._check(TokenType.SEMICOLON):
+            condition = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expected ';' after loop condition")
+
+        increment = None
+        if not self._check(TokenType.RIGHT_PAREN):
+            increment = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expected ')' after for clauses")
+
+        body = self._statement()
+
+        return ForStmt(initializer=initializer, condition=condition, increment=increment, body=body)
 
     def _if_statement(self):
         self._consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'")
@@ -100,7 +126,16 @@ class AstBuilder:
     # --- expressions ---
 
     def _expression(self):
-        return self._logic_or()
+        return self._assignment()
+
+    def _assignment(self):
+        expr = self._logic_or()
+        if self._match(TokenType.EQUAL):
+            if not isinstance(expr, VariableExpr):
+                raise SyntaxError("Invalid assignment target")
+            value = self._assignment()
+            return AssignExpr(name=expr.name, value=value)
+        return expr
 
     def _logic_or(self):
         expr = self._logic_and()
@@ -135,12 +170,19 @@ class AstBuilder:
         return expr
 
     def _factor(self):
-        expr = self._primary()
+        expr = self._unary()
         while self._match(TokenType.STAR, TokenType.SLASH):
             operator = self._previous()
-            right = self._primary()
+            right = self._unary()
             expr = BinaryExpr(left=expr, operator=operator, right=right)
         return expr
+
+    def _unary(self):
+        if self._match(TokenType.BANG, TokenType.MINUS):
+            operator = self._previous()
+            right = self._unary()
+            return UnaryExpr(operator=operator, right=right)
+        return self._primary()
 
     def _primary(self):
         if self._match(TokenType.NUMBER, TokenType.STRING):

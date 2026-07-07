@@ -1,9 +1,9 @@
 import pytest
-import nodes
 
 from assembler import Assembler
-from nodes.tokens import Token
-from nodes.token_type import TokenType
+from src.nodes.tokens import Token
+from src.nodes.token_type import TokenType
+from src.nodes import *
 
 
 # --- 산술 연산자 우선순위 (곱셈/나눗셈이 덧셈/뺄셈보다 먼저) ---
@@ -14,14 +14,14 @@ from nodes.token_type import TokenType
         (
             "print 1 + 2 * 3;",
             [
-                nodes.PrintStmt(
-                    expression=nodes.BinaryExpr(
-                        left=nodes.LiteralExpr(1.0),
+                PrintStmt(
+                    expression=BinaryExpr(
+                        left=LiteralExpr(1.0),
                         operator=Token(TokenType.PLUS, "+"),
-                        right=nodes.BinaryExpr(
-                            left=nodes.LiteralExpr(2.0),
+                        right=BinaryExpr(
+                            left=LiteralExpr(2.0),
                             operator=Token(TokenType.STAR, "*"),
-                            right=nodes.LiteralExpr(3.0),
+                            right=LiteralExpr(3.0),
                         ),
                     )
                 )
@@ -30,17 +30,17 @@ from nodes.token_type import TokenType
         (
             "print (1 + 2) * 3;",
             [
-                nodes.PrintStmt(
-                    expression=nodes.BinaryExpr(
-                        left=nodes.GroupingExpr(
-                            expression=nodes.BinaryExpr(
-                                left=nodes.LiteralExpr(1.0),
+                PrintStmt(
+                    expression=BinaryExpr(
+                        left=GroupingExpr(
+                            expression=BinaryExpr(
+                                left=LiteralExpr(1.0),
                                 operator=Token(TokenType.PLUS, "+"),
-                                right=nodes.LiteralExpr(2.0),
+                                right=LiteralExpr(2.0),
                             )
                         ),
                         operator=Token(TokenType.STAR, "*"),
-                        right=nodes.LiteralExpr(3.0),
+                        right=LiteralExpr(3.0),
                     )
                 )
             ],
@@ -48,15 +48,15 @@ from nodes.token_type import TokenType
         (
             "print 10 - 4 - 3;",
             [
-                nodes.PrintStmt(
-                    expression=nodes.BinaryExpr(
-                        left=nodes.BinaryExpr(
-                            left=nodes.LiteralExpr(10.0),
+                PrintStmt(
+                    expression=BinaryExpr(
+                        left=BinaryExpr(
+                            left=LiteralExpr(10.0),
                             operator=Token(TokenType.MINUS, "-"),
-                            right=nodes.LiteralExpr(4.0),
+                            right=LiteralExpr(4.0),
                         ),
                         operator=Token(TokenType.MINUS, "-"),
-                        right=nodes.LiteralExpr(3.0),
+                        right=LiteralExpr(3.0),
                     )
                 )
             ],
@@ -64,15 +64,15 @@ from nodes.token_type import TokenType
         (
             "print 8 / 2 / 2;",
             [
-                nodes.PrintStmt(
-                    expression=nodes.BinaryExpr(
-                        left=nodes.BinaryExpr(
-                            left=nodes.LiteralExpr(8.0),
+                PrintStmt(
+                    expression=BinaryExpr(
+                        left=BinaryExpr(
+                            left=LiteralExpr(8.0),
                             operator=Token(TokenType.SLASH, "/"),
-                            right=nodes.LiteralExpr(2.0),
+                            right=LiteralExpr(2.0),
                         ),
                         operator=Token(TokenType.SLASH, "/"),
-                        right=nodes.LiteralExpr(2.0),
+                        right=LiteralExpr(2.0),
                     )
                 )
             ],
@@ -80,14 +80,14 @@ from nodes.token_type import TokenType
         (
             "print -3 + 2;",
             [
-                nodes.PrintStmt(
-                    expression=nodes.BinaryExpr(
-                        left=nodes.UnaryExpr(
+                PrintStmt(
+                    expression=BinaryExpr(
+                        left=UnaryExpr(
                             operator=Token(TokenType.MINUS, "-"),
-                            right=nodes.LiteralExpr(3.0),
+                            right=LiteralExpr(3.0),
                         ),
                         operator=Token(TokenType.PLUS, "+"),
-                        right=nodes.LiteralExpr(2.0),
+                        right=LiteralExpr(2.0),
                     )
                 )
             ],
@@ -117,11 +117,11 @@ def test_assembler_comparison(source, operator_type, operator_lexeme, left, righ
     sut.execute()
 
     assert sut.ast == [
-        nodes.PrintStmt(
-            expression=nodes.BinaryExpr(
-                left=nodes.LiteralExpr(left),
+        PrintStmt(
+            expression=BinaryExpr(
+                left=LiteralExpr(left),
                 operator=Token(operator_type, operator_lexeme),
-                right=nodes.LiteralExpr(right),
+                right=LiteralExpr(right),
             )
         )
     ]
@@ -136,11 +136,11 @@ def test_assembler_string_concatenation():
     sut.execute()
 
     assert sut.ast == [
-        nodes.PrintStmt(
-            expression=nodes.BinaryExpr(
-                left=nodes.LiteralExpr("Hello, "),
+        PrintStmt(
+            expression=BinaryExpr(
+                left=LiteralExpr("Hello, "),
                 operator=Token(TokenType.PLUS, "+"),
-                right=nodes.LiteralExpr("CodeFab!"),
+                right=LiteralExpr("CodeFab!"),
             )
         )
     ]
@@ -161,7 +161,7 @@ def test_assembler_number_output_format(source, literal):
 
     sut.execute()
 
-    assert sut.ast == [nodes.PrintStmt(expression=nodes.LiteralExpr(literal))]
+    assert sut.ast == [PrintStmt(expression=LiteralExpr(literal))]
 
 
 # --- boolean 리터럴 출력 ---
@@ -178,4 +178,237 @@ def test_assembler_boolean_literal_output(source, literal):
 
     sut.execute()
 
-    assert sut.ast == [nodes.PrintStmt(expression=nodes.LiteralExpr(literal))]
+    assert sut.ast == [PrintStmt(expression=LiteralExpr(literal))]
+
+
+# --- 변수 선언 / 재할당 / 블록 스코프 / shadowing ---
+
+def test_assembler_variable_declaration_and_usage():
+    source = """
+    var a = 10;
+    var b = 20;
+    print a + b;
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a"), initializer=LiteralExpr(10.0)),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "b"), initializer=LiteralExpr(20.0)),
+        PrintStmt(
+            expression=BinaryExpr(
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
+                operator=Token(TokenType.PLUS, "+"),
+                right=VariableExpr(Token(TokenType.IDENTIFIER, "b")),
+            )
+        ),
+    ]
+
+
+def test_assembler_variable_reassignment():
+    source = """
+    var a = 10;
+    a = a + 5;
+    print a;
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a"), initializer=LiteralExpr(10.0)),
+        ExpressionStmt(
+            expression=AssignExpr(
+                name=Token(TokenType.IDENTIFIER, "a"),
+                value=BinaryExpr(
+                    left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(5.0),
+                ),
+            )
+        ),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "a"))),
+    ]
+
+
+def test_assembler_block_scope_and_shadowing():
+    source = """
+    var x = "global";
+    {
+      var x = "inner";
+      print x;
+    }
+    print x;
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x"), initializer=LiteralExpr("global")),
+        BlockStmt(
+            statements=[
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x"), initializer=LiteralExpr("inner")),
+                PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x"))),
+            ]
+        ),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x"))),
+    ]
+
+
+def test_assembler_inner_block_modifies_outer_variable():
+    source = """
+    var count = 0;
+    {
+      count = count + 1;
+    }
+    print count;
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "count"), initializer=LiteralExpr(0.0)),
+        BlockStmt(
+            statements=[
+                ExpressionStmt(
+                    expression=AssignExpr(
+                        name=Token(TokenType.IDENTIFIER, "count"),
+                        value=BinaryExpr(
+                            left=VariableExpr(Token(TokenType.IDENTIFIER, "count")),
+                            operator=Token(TokenType.PLUS, "+"),
+                            right=LiteralExpr(1.0),
+                        ),
+                    )
+                )
+            ]
+        ),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "count"))),
+    ]
+
+
+def test_assembler_nested_scope_resolution():
+    source = """
+    var outer = "A";
+    {
+      var inner = "B";
+      {
+        print outer + inner;
+      }
+    }
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "outer"), initializer=LiteralExpr("A")),
+        BlockStmt(
+            statements=[
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "inner"), initializer=LiteralExpr("B")),
+                BlockStmt(
+                    statements=[
+                        PrintStmt(
+                            expression=BinaryExpr(
+                                left=VariableExpr(Token(TokenType.IDENTIFIER, "outer")),
+                                operator=Token(TokenType.PLUS, "+"),
+                                right=VariableExpr(Token(TokenType.IDENTIFIER, "inner")),
+                            )
+                        )
+                    ]
+                ),
+            ]
+        ),
+    ]
+
+
+# --- 제어 흐름: if / else, for ---
+
+def test_assembler_if_without_else():
+    source = 'if (true) print "bbq";'
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=PrintStmt(expression=LiteralExpr("bbq")),
+            else_branch=None,
+        )
+    ]
+
+
+def test_assembler_if_else():
+    source = 'if (false) print "no"; else print "kfc";'
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        IfStmt(
+            condition=LiteralExpr(False),
+            then_branch=PrintStmt(expression=LiteralExpr("no")),
+            else_branch=PrintStmt(expression=LiteralExpr("kfc")),
+        )
+    ]
+
+
+def test_assembler_dangling_else_binds_to_nearest_if():
+    source = """
+    if (true)
+    {
+      if (false) print "kfc";
+      else print "bbq";
+    }
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=BlockStmt(
+                statements=[
+                    IfStmt(
+                        condition=LiteralExpr(False),
+                        then_branch=PrintStmt(expression=LiteralExpr("kfc")),
+                        else_branch=PrintStmt(expression=LiteralExpr("bbq")),
+                    )
+                ]
+            ),
+            else_branch=None,
+        )
+    ]
+
+
+def test_assembler_for_loop():
+    source = "for (var j = 0; j < 3; j = j + 1) { print j; }"
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        ForStmt(
+            initializer=VarDeclStmt(name=Token(TokenType.IDENTIFIER, "j"), initializer=LiteralExpr(0.0)),
+            condition=BinaryExpr(
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "j")),
+                operator=Token(TokenType.LESS, "<"),
+                right=LiteralExpr(3.0),
+            ),
+            increment=AssignExpr(
+                name=Token(TokenType.IDENTIFIER, "j"),
+                value=BinaryExpr(
+                    left=VariableExpr(Token(TokenType.IDENTIFIER, "j")),
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(1.0),
+                ),
+            ),
+            body=BlockStmt(
+                statements=[PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "j")))]
+            ),
+        )
+    ]
