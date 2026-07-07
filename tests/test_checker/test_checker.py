@@ -41,6 +41,7 @@ def test_check_returns_no_errors_when_empty():
 
     assert checker.check() == []
 
+#
 
 def test_check_returns_no_errors_for_single_declaration():
     checker = CheckerUnit([make_var_decl("a")])
@@ -57,6 +58,7 @@ def test_check_detects_duplicate_declaration_in_same_block():
     assert len(errors) == 1
     assert errors[0].message == "Already a variable with this name in this scope."
 
+# 변수 중복 선언 검사
 
 def test_check_allows_same_name_in_nested_block():
     statements = [
@@ -86,6 +88,7 @@ def test_check_detects_duplicate_declaration_inside_nested_block():
     assert errors[0].message == "Already a variable with this name in this scope."
 
 
+# 자기 참조 검사
 def test_check_detects_self_reference_in_initializer():
     # { var a = a; }
     statements = [

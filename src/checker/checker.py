@@ -34,6 +34,10 @@ class CheckerError(Exception):
 
 class ExprNameFinder:
     def uses_name(self, expr, name):
+        # 투박한 방어 코드: expr이 진짜 Expr가 아니면(예: 손상된 AST) 그냥 False.
+        if not isinstance(expr, Expr):
+            return False
+
         if isinstance(expr, VariableExpr):
             return expr.name.lexeme == name
 
@@ -52,6 +56,10 @@ class ScopeChecker:
 
     def check_var_decl(self, statement, errors):
         """변수 선언문(var a = ...;) 하나를 검사한다."""
+        # 투박한 방어 코드: name 토큰이 없으면(손상된 AST) 그냥 넘어간다.
+        if statement.name is None:
+            return
+
         name = statement.name.lexeme
 
         # 1. 초기화식이 자기 자신을 읽고 있는지 검사한다. 예: var a = a;
