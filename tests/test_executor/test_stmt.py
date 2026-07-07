@@ -1,10 +1,9 @@
 import pytest
 
-from executor import evaluate, execute
+from executor import UndefinedVariableError, evaluate, execute
 from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
 from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, Stmt, VarDeclStmt
 from nodes.token_type import TokenType
-from storage import UndefinedVariableError
 
 from helpers import tok
 

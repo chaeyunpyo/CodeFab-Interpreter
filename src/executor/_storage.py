@@ -13,13 +13,7 @@ Public API:
 
 from typing import Any, Dict, List
 
-
-class UndefinedVariableError(KeyError):
-    """정의되지 않은 변수를 참조할 때 발생하는 예외."""
-
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Undefined variable '{name}'")
-        self.name = name
+from .errors import UndefinedVariableError
 
 
 class Storage:

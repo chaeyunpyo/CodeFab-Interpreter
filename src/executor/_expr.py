@@ -12,9 +12,8 @@ from nodes import (
     VariableExpr,
 )
 from nodes.token_type import TokenType
-from storage import Storage
-
-from .errors import DivideByZeroError, TypeMismatchError
+from ._storage import Storage
+from .errors import DivideByZeroError, TypeMismatchError, UndefinedVariableError
 
 
 def _is_number(value: Any) -> bool:
@@ -22,14 +21,14 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _check_number_operand(value: Any) -> None:
+def _check_number_operand(value: Any, token) -> None:
     if not _is_number(value):
-        raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.")
+        raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.", token)
 
 
-def _check_number_operands(left: Any, right: Any) -> None:
+def _check_number_operands(left: Any, right: Any, token) -> None:
     if not _is_number(left) or not _is_number(right):
-        raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.")
+        raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.", token)
 
 
 def _evaluate_literal(expr: LiteralExpr, storage: Storage) -> Any:
@@ -37,12 +36,20 @@ def _evaluate_literal(expr: LiteralExpr, storage: Storage) -> Any:
 
 
 def _evaluate_variable(expr: VariableExpr, storage: Storage) -> Any:
-    return storage.get(expr.name.lexeme)
+    try:
+        return storage.get(expr.name.lexeme)
+    except UndefinedVariableError as e:
+        e.token = expr.name
+        raise
 
 
 def _evaluate_assign(expr: AssignExpr, storage: Storage) -> Any:
     value = evaluate(expr.value, storage)
-    storage.set(expr.name.lexeme, value)
+    try:
+        storage.set(expr.name.lexeme, value)
+    except UndefinedVariableError as e:
+        e.token = expr.name
+        raise
     return value
 
 
@@ -53,11 +60,14 @@ def _evaluate_grouping(expr: GroupingExpr, storage: Storage) -> Any:
 def _evaluate_unary(expr: UnaryExpr, storage: Storage) -> Any:
     right = evaluate(expr.right, storage)
     if expr.operator.type == TokenType.MINUS:
-        _check_number_operand(right)
+        _check_number_operand(right, expr.operator)
         return -right
+    if expr.operator.type == TokenType.PLUS:
+        _check_number_operand(right, expr.operator)
+        return right
     if expr.operator.type == TokenType.BANG:
         return not right
-    raise TypeMismatchError(f"지원하지 않는 단항 연산자 '{expr.operator.lexeme}'")
+    raise TypeMismatchError(f"지원하지 않는 단항 연산자 '{expr.operator.lexeme}'", expr.operator)
 
 
 def _evaluate_logical(expr: LogicalExpr, storage: Storage) -> Any:
@@ -95,15 +105,15 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
     op = expr.operator.type
 
     if op == TokenType.SLASH:
-        _check_number_operands(left, right)
+        _check_number_operands(left, right, expr.operator)
         if right == 0:
-            raise DivideByZeroError("0으로 나눌 수 없습니다.")
+            raise DivideByZeroError("0으로 나눌 수 없습니다.", expr.operator)
         return left / right
 
     numeric_op = _NUMERIC_BINARY_OPS.get(op)
     if numeric_op is None:
-        raise TypeMismatchError(f"지원하지 않는 이항 연산자 '{expr.operator.lexeme}'")
-    _check_number_operands(left, right)
+        raise TypeMismatchError(f"지원하지 않는 이항 연산자 '{expr.operator.lexeme}'", expr.operator)
+    _check_number_operands(left, right, expr.operator)
     return numeric_op(left, right)
 
 

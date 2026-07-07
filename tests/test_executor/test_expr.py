@@ -1,6 +1,6 @@
 import pytest
 
-from executor import DivideByZeroError, TypeMismatchError, evaluate, stringify
+from executor import DivideByZeroError, TypeMismatchError, UndefinedVariableError, evaluate, stringify
 from nodes.expr import (
     AssignExpr,
     BinaryExpr,
@@ -11,7 +11,6 @@ from nodes.expr import (
     VariableExpr,
 )
 from nodes.token_type import TokenType
-from storage import UndefinedVariableError
 
 from helpers import tok
 
