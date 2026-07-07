@@ -4,7 +4,7 @@ RED → GREEN 순서로 작성됨.
 모든 테스트는 src/storage.py 구현 전 먼저 실패해야 한다.
 """
 import pytest
-from storage import Storage, UndefinedVariableError
+from executor import Storage, UndefinedVariableError
 
 
 # ── 기본 CRUD ─────────────────────────────────────────────────────────────────
