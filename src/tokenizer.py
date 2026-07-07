@@ -2,6 +2,10 @@ from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
 
 
+class TokenizerError(Exception):
+    """토크나이저가 처리할 수 없는 입력을 만났을 때 발생시키는 예외."""
+
+
 class Tokenizer:
     SINGLE_CHAR_TOKENS = {
         "(": TokenType.LEFT_PAREN,
@@ -76,6 +80,9 @@ class Tokenizer:
                 self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars))
                 self.current += 2
                 continue
+
+            if ch not in self.SINGLE_CHAR_TOKENS:
+                raise TokenizerError(f"Unexpected character: {ch!r}")
 
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
             self.current += 1

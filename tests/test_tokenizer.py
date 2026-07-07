@@ -1,7 +1,7 @@
 import pytest
 from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
-from src.tokenizer import Tokenizer  # 아직 존재하지 않음 (다음 단계에서 구현)
+from src.tokenizer import Tokenizer, TokenizerError  # 아직 존재하지 않음 (다음 단계에서 구현)
 
 
 # --- 0단계: Token 객체 자체 (Tokenizer 없이도 통과되어야 하는 기준선) ---
@@ -277,3 +277,12 @@ def test_step17_bang_equal():
         Token(TokenType.BANG_EQUAL, "!="),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 18단계: 등록되지 않은 문자 (KeyError가 아니라 명확한 에러여야 한다) ---
+
+def test_step18_unexpected_character_raises_tokenizer_error():
+    """@ 같이 어떤 토큰에도 매핑되지 않는 문자는 KeyError가 아니라 TokenizerError를 내야 한다."""
+    tokenizer = Tokenizer("@")
+
+    with pytest.raises(TokenizerError):
+        tokenizer.tokenize()
