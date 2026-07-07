@@ -2,6 +2,10 @@ from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
 
 
+class TokenizerError(Exception):
+    """토크나이저가 처리할 수 없는 입력을 만났을 때 발생시키는 예외."""
+
+
 class Tokenizer:
     SINGLE_CHAR_TOKENS = {
         "(": TokenType.LEFT_PAREN,
@@ -42,14 +46,16 @@ class Tokenizer:
 
     def __init__(self, source: str):
         self.source = source
-        self.start = 0
         self.current = 0
-        self.line = 1
         self.tokens = []
 
     def tokenize(self):
+        self.current = 0
+        self.tokens = []
+
         while self.current < len(self.source):
             ch = self.source[self.current]
+            two_chars = self.source[self.current:self.current + 2]
 
             if ch.isspace():
                 self.current += 1
@@ -67,15 +73,17 @@ class Tokenizer:
                 self._scan_string()
                 continue
 
-            if ch == "/" and self.source[self.current + 1:self.current + 2] == "/":
+            if two_chars == "//":
                 self._skip_line_comment()
                 continue
 
-            two_chars = self.source[self.current:self.current + 2]
             if two_chars in self.TWO_CHAR_TOKENS:
                 self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars))
                 self.current += 2
                 continue
+
+            if ch not in self.SINGLE_CHAR_TOKENS:
+                raise TokenizerError(f"Unexpected character: {ch!r}")
 
             self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
             self.current += 1
