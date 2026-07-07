@@ -9,11 +9,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from .ast_node import AstNode
 from .expr import Expr
 from .tokens import Token
 
 
-class Stmt:
+class Stmt(AstNode):
     """모든 Statement 노드의 최상위 타입. (PDF p.13)"""
 
 
