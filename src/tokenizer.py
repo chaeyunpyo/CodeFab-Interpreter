@@ -46,14 +46,16 @@ class Tokenizer:
 
     def __init__(self, source: str):
         self.source = source
-        self.start = 0
         self.current = 0
-        self.line = 1
         self.tokens = []
 
     def tokenize(self):
+        self.current = 0
+        self.tokens = []
+
         while self.current < len(self.source):
             ch = self.source[self.current]
+            two_chars = self.source[self.current:self.current + 2]
 
             if ch.isspace():
                 self.current += 1
@@ -71,11 +73,10 @@ class Tokenizer:
                 self._scan_string()
                 continue
 
-            if ch == "/" and self.source[self.current + 1:self.current + 2] == "/":
+            if two_chars == "//":
                 self._skip_line_comment()
                 continue
 
-            two_chars = self.source[self.current:self.current + 2]
             if two_chars in self.TWO_CHAR_TOKENS:
                 self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars))
                 self.current += 2
