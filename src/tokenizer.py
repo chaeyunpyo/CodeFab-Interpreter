@@ -25,6 +25,7 @@ class Tokenizer:
         "<=": TokenType.LESS_EQUAL,
         "=<": TokenType.EQUAL_LESS,
         "=>": TokenType.EQUAL_GREATER,
+        "!=": TokenType.BANG_EQUAL,
     }
 
     KEYWORDS = {

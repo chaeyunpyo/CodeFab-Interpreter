@@ -27,6 +27,7 @@ class TokenType(Enum):
 
     # 단항 연산자 (PDF p.36 - Unary Expression: !, +, -)
     BANG = auto()
+    BANG_EQUAL = auto()
 
     # 리터럴 / 식별자 (PDF p.28)
     IDENTIFIER = auto()

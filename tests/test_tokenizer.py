@@ -265,3 +265,15 @@ def test_step16_single_bang():
         Token(TokenType.BANG, "!"),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 17단계: 부정 비교 연산자 (!=) ---
+
+def test_step17_bang_equal():
+    """! 뒤에 =가 붙으면 단일 문자가 아니라 2문자 비교 연산자(같지 않음)여야 한다."""
+    tokenizer = Tokenizer("!=")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.BANG_EQUAL, "!="),
+        Token(TokenType.EOF, ""),
+    ]
