@@ -9,10 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .ast_node import AstNode
 from .tokens import Token
 
 
-class Expr:
+class Expr(AstNode):
     """모든 Expression 노드의 최상위 타입. (PDF p.13)"""
 
 

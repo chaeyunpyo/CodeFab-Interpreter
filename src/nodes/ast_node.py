@@ -1,10 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 class AstNode(ABC):
-    pass
-
-class ExprNode(AstNode):
-    pass
-
-class StmtNode(AstNode):
     pass
