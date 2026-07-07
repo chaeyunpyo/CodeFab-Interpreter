@@ -5,7 +5,6 @@ Public API:
     execute(stmt, storage) -> None   - Stmt 하나를 실행 (부수효과만 발생)
     stringify(value) -> str          - print 출력 / 오류 메시지용 문자열 변환
 
-TDD Red 단계 - tests/test_executor.py 를 통과하도록 구현해나갈 것.
 """
 
 from typing import Any
