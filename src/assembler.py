@@ -1,23 +1,22 @@
 import nodes
 
+from src.ast_builder import AstBuilder
 from src.tokenizer import Tokenizer
 
 
 class Assembler:
     def __init__(self, source: str):
-        self._root : nodes.AstNode = nodes.StmtNode()  # TODO: specify block stmt type
-        self._tokenizer = Tokenizer(source)
+        self._source = source
+        self._ast : list[nodes.AstNode] = []
 
     @property
-    def root(self) -> nodes.AstNode:
-        return self._root
+    def ast(self) -> list[nodes.AstNode]:
+        return self._ast
 
-    @root.setter
-    def root(self, node: nodes.AstNode):
-        raise Exception("Cannot set root node directly.")
+    @ast.setter
+    def ast(self, node):
+        raise Exception("Cannot set ast node directly.")
 
     def execute(self):
-        self._build_tree(self._tokenizer.tokenize())
-
-    def _build_tree(self, tokens):
-        pass
+        tokens = Tokenizer(self._source).tokenize()
+        self._ast = AstBuilder(tokens).build()
