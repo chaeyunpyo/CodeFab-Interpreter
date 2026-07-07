@@ -2,6 +2,10 @@ from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
 
 
+class TokenizerError(Exception):
+    """토크나이저가 처리할 수 없는 입력을 만났을 때 발생시키는 예외."""
+
+
 class Tokenizer:
     SINGLE_CHAR_TOKENS = {
         "(": TokenType.LEFT_PAREN,
@@ -42,14 +46,23 @@ class Tokenizer:
 
     def __init__(self, source: str):
         self.source = source
-        self.start = 0
         self.current = 0
         self.line = 1
         self.tokens = []
 
     def tokenize(self):
+        self.current = 0
+        self.line = 1
+        self.tokens = []
+
         while self.current < len(self.source):
             ch = self.source[self.current]
+            two_chars = self.source[self.current:self.current + 2]
+
+            if ch == "\n":
+                self.line += 1
+                self.current += 1
+                continue
 
             if ch.isspace():
                 self.current += 1
@@ -67,20 +80,22 @@ class Tokenizer:
                 self._scan_string()
                 continue
 
-            if ch == "/" and self.source[self.current + 1:self.current + 2] == "/":
+            if two_chars == "//":
                 self._skip_line_comment()
                 continue
 
-            two_chars = self.source[self.current:self.current + 2]
             if two_chars in self.TWO_CHAR_TOKENS:
-                self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars))
+                self.tokens.append(Token(self.TWO_CHAR_TOKENS[two_chars], two_chars, line=self.line))
                 self.current += 2
                 continue
 
-            self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch))
+            if ch not in self.SINGLE_CHAR_TOKENS:
+                raise TokenizerError(f"Unexpected character: {ch!r}")
+
+            self.tokens.append(Token(self.SINGLE_CHAR_TOKENS[ch], ch, line=self.line))
             self.current += 1
 
-        self.tokens.append(Token(TokenType.EOF, ""))
+        self.tokens.append(Token(TokenType.EOF, "", line=self.line))
         return self.tokens
 
     def _scan_number(self):
@@ -99,7 +114,7 @@ class Tokenizer:
                 self.current += 1
 
         lexeme = self.source[start:self.current]
-        self.tokens.append(Token(TokenType.NUMBER, lexeme, literal=float(lexeme)))
+        self.tokens.append(Token(TokenType.NUMBER, lexeme, literal=float(lexeme), line=self.line))
 
     def _scan_identifier(self):
         start = self.current
@@ -110,7 +125,7 @@ class Tokenizer:
 
         lexeme = self.source[start:self.current]
         token_type = self.KEYWORDS.get(lexeme, TokenType.IDENTIFIER)
-        self.tokens.append(Token(token_type, lexeme))
+        self.tokens.append(Token(token_type, lexeme, line=self.line))
 
     def _scan_string(self):
         start = self.current
@@ -120,7 +135,7 @@ class Tokenizer:
 
         self.current += 1
         lexeme = self.source[start:self.current]
-        self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1]))
+        self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1], line=self.line))
 
     def _skip_line_comment(self):
         while self.current < len(self.source) and self.source[self.current] != "\n":

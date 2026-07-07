@@ -1,7 +1,7 @@
 import pytest
 from src.nodes.tokens import Token
 from src.nodes.token_type import TokenType
-from src.tokenizer import Tokenizer  # 아직 존재하지 않음 (다음 단계에서 구현)
+from src.tokenizer import Tokenizer, TokenizerError  # 아직 존재하지 않음 (다음 단계에서 구현)
 
 
 # --- 0단계: Token 객체 자체 (Tokenizer 없이도 통과되어야 하는 기준선) ---
@@ -190,10 +190,10 @@ def test_step12_line_comment_is_ignored():
     tokens = tokenizer.tokenize()
 
     assert tokens == [
-        Token(TokenType.PRINT, "print"),
-        Token(TokenType.NUMBER, "1", literal=1.0),
-        Token(TokenType.SEMICOLON, ";"),
-        Token(TokenType.EOF, ""),
+        Token(TokenType.PRINT, "print", line=2),
+        Token(TokenType.NUMBER, "1", literal=1.0, line=2),
+        Token(TokenType.SEMICOLON, ";", line=2),
+        Token(TokenType.EOF, "", line=2),
     ]
 
 # --- 13단계: 2문자 비교 연산자 (추가분: ==, >=, <=) ---
@@ -276,4 +276,34 @@ def test_step17_bang_equal():
     assert tokens == [
         Token(TokenType.BANG_EQUAL, "!="),
         Token(TokenType.EOF, ""),
+    ]
+
+# --- 18단계: 등록되지 않은 문자 (KeyError가 아니라 명확한 에러여야 한다) ---
+
+def test_step18_unexpected_character_raises_tokenizer_error():
+    """@ 같이 어떤 토큰에도 매핑되지 않는 문자는 KeyError가 아니라 TokenizerError를 내야 한다."""
+    tokenizer = Tokenizer("@")
+
+    with pytest.raises(TokenizerError):
+        tokenizer.tokenize()
+
+# --- 19단계: 줄 번호 추적 (Checker/Executor 에러 메시지가 줄 번호를 필요로 함) ---
+
+def test_step19_tracks_line_numbers_across_newlines():
+    """개행(\\n)을 지날 때마다 이후 토큰들의 line이 증가해야 한다."""
+    tokenizer = Tokenizer("var a = 1;\nvar b = 2;")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.VAR, "var", line=1),
+        Token(TokenType.IDENTIFIER, "a", line=1),
+        Token(TokenType.EQUAL, "=", line=1),
+        Token(TokenType.NUMBER, "1", literal=1.0, line=1),
+        Token(TokenType.SEMICOLON, ";", line=1),
+        Token(TokenType.VAR, "var", line=2),
+        Token(TokenType.IDENTIFIER, "b", line=2),
+        Token(TokenType.EQUAL, "=", line=2),
+        Token(TokenType.NUMBER, "2", literal=2.0, line=2),
+        Token(TokenType.SEMICOLON, ";", line=2),
+        Token(TokenType.EOF, "", line=2),
     ]
