@@ -190,10 +190,10 @@ def test_step12_line_comment_is_ignored():
     tokens = tokenizer.tokenize()
 
     assert tokens == [
-        Token(TokenType.PRINT, "print"),
-        Token(TokenType.NUMBER, "1", literal=1.0),
-        Token(TokenType.SEMICOLON, ";"),
-        Token(TokenType.EOF, ""),
+        Token(TokenType.PRINT, "print", line=2),
+        Token(TokenType.NUMBER, "1", literal=1.0, line=2),
+        Token(TokenType.SEMICOLON, ";", line=2),
+        Token(TokenType.EOF, "", line=2),
     ]
 
 # --- 13단계: 2문자 비교 연산자 (추가분: ==, >=, <=) ---
@@ -286,3 +286,24 @@ def test_step18_unexpected_character_raises_tokenizer_error():
 
     with pytest.raises(TokenizerError):
         tokenizer.tokenize()
+
+# --- 19단계: 줄 번호 추적 (Checker/Executor 에러 메시지가 줄 번호를 필요로 함) ---
+
+def test_step19_tracks_line_numbers_across_newlines():
+    """개행(\\n)을 지날 때마다 이후 토큰들의 line이 증가해야 한다."""
+    tokenizer = Tokenizer("var a = 1;\nvar b = 2;")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.VAR, "var", line=1),
+        Token(TokenType.IDENTIFIER, "a", line=1),
+        Token(TokenType.EQUAL, "=", line=1),
+        Token(TokenType.NUMBER, "1", literal=1.0, line=1),
+        Token(TokenType.SEMICOLON, ";", line=1),
+        Token(TokenType.VAR, "var", line=2),
+        Token(TokenType.IDENTIFIER, "b", line=2),
+        Token(TokenType.EQUAL, "=", line=2),
+        Token(TokenType.NUMBER, "2", literal=2.0, line=2),
+        Token(TokenType.SEMICOLON, ";", line=2),
+        Token(TokenType.EOF, "", line=2),
+    ]
