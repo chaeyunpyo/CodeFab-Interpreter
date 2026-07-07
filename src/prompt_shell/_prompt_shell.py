@@ -56,3 +56,22 @@ class PromptShell:
             elif token.type == TokenType.RIGHT_BRACE:
                 depth -= 1
         return depth > 0
+
+
+def run_cli() -> None:
+    """터미널에서 한 줄씩 입력받아 실행하는 대화형 REPL 진입점.
+
+    'exit'/'quit' 입력, EOF(Ctrl+D), Ctrl+C 중 하나로 종료한다.
+    """
+    shell = PromptShell()
+    while True:
+        try:
+            line = input("> ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if line.strip() in ("exit", "quit"):
+            break
+
+        shell.run(line)

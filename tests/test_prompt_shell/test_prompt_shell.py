@@ -1,6 +1,6 @@
 import pytest
 
-from prompt_shell import PromptShell
+from prompt_shell import PromptShell, run_cli
 
 
 # --- 0단계: 가장 단순한 케이스 (print 문 한 줄을 실행하면 결과가 출력되어야 한다) ---
@@ -189,3 +189,32 @@ def test_step12_string_concatenation(capsys):
     shell.run('print "Hello, " + "CodeFab!";')
 
     assert capsys.readouterr().out == "Hello, CodeFab!\n"
+
+# --- 13단계: run_cli() - 실제 터미널 진입점 (PDF 목표 3: Prompt Shell/CLI Shell 제작) ---
+
+def test_step13_run_cli_executes_each_input_line(monkeypatch, capsys):
+    """input()으로 한 줄씩 받아 즉시 실행하고, 상태가 여러 줄에 걸쳐 유지되어야 한다."""
+    lines = iter(["var a = 10;", "print a;", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
+
+    run_cli()
+
+    assert capsys.readouterr().out == "10\n"
+
+
+def test_step13_run_cli_stops_on_eof(monkeypatch, capsys):
+    """더 이상 입력이 없어 EOFError(Ctrl+D)가 나면 예외 없이 종료해야 한다."""
+    lines = iter(["print 1;"])
+
+    def fake_input(prompt=""):
+        try:
+            return next(lines)
+        except StopIteration:
+            raise EOFError
+
+    monkeypatch.setattr("builtins.input", fake_input)
+
+    run_cli()
+
+    # EOF를 만나면 커서를 다음 줄로 넘기기 위한 개행이 하나 더 찍힌다 (터미널 UX).
+    assert capsys.readouterr().out == "1\n\n"
