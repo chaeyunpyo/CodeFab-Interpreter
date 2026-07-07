@@ -1,3 +1,4 @@
+from .ast_node import *
 from .expr import (
     AssignExpr,
     BinaryExpr,
