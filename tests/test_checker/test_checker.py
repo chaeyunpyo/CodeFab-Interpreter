@@ -188,3 +188,23 @@ def test_check_for_loop_with_no_issues_has_no_errors():
     checker = CheckerUnit(statements)
 
     assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_between_outer_var_and_for_initializer():
+    # var i = 0; for (var i = 1; ; ) {}
+    # for의 initializer는 새 스코프를 열지 않으므로 바깥의 i와 충돌한다.
+    statements = [
+        make_var_decl("i", LiteralExpr(0)),
+        ForStmt(
+            initializer=make_var_decl("i", LiteralExpr(1)),
+            condition=None,
+            increment=None,
+            body=BlockStmt(statements=[]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
