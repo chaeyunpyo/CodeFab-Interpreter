@@ -1,16 +1,16 @@
-import nodes
+from nodes.ast_node import AstNode
 
-from src.ast_builder import AstBuilder
-from src.tokenizer import Tokenizer
+from ._ast_builder import AstBuilder
+from ._tokenizer import Tokenizer
 
 
 class Assembler:
     def __init__(self, source: str):
         self._source = source
-        self._ast : list[nodes.AstNode] = []
+        self._ast : list[AstNode] = []
 
     @property
-    def ast(self) -> list[nodes.AstNode]:
+    def ast(self) -> list[AstNode]:
         return self._ast
 
     @ast.setter

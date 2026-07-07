@@ -1,9 +1,9 @@
 import pytest
 
 from assembler import Assembler
-from src.nodes.tokens import Token
-from src.nodes.token_type import TokenType
-from src.nodes import *
+from nodes.tokens import Token
+from nodes.token_type import TokenType
+from nodes import *
 
 
 # --- 산술 연산자 우선순위 (곱셈/나눗셈이 덧셈/뺄셈보다 먼저) ---
@@ -102,6 +102,52 @@ def test_assembler_arithmetic_precedence(source, expected):
     assert sut.ast == expected
 
 
+# --- 단항 연산자 (PDF p.36: !, +, -) ---
+
+@pytest.mark.parametrize(
+    "source, operator_type, operator_lexeme",
+    [
+        ("print +3;", TokenType.PLUS, "+"),
+        ("print -3;", TokenType.MINUS, "-"),
+        ("print !true;", TokenType.BANG, "!"),
+    ],
+)
+def test_assembler_unary_operators(source, operator_type, operator_lexeme):
+    sut = Assembler(source)
+
+    sut.execute()
+
+    literal = True if operator_type == TokenType.BANG else 3.0
+    assert sut.ast == [
+        PrintStmt(
+            expression=UnaryExpr(
+                operator=Token(operator_type, operator_lexeme),
+                right=LiteralExpr(literal),
+            )
+        )
+    ]
+
+
+def test_assembler_unary_plus_does_not_change_precedence():
+    """소스코드: print 1 + +2;"""
+    sut = Assembler("print 1 + +2;")
+
+    sut.execute()
+
+    assert sut.ast == [
+        PrintStmt(
+            expression=BinaryExpr(
+                left=LiteralExpr(1.0),
+                operator=Token(TokenType.PLUS, "+"),
+                right=UnaryExpr(
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(2.0),
+                ),
+            )
+        )
+    ]
+
+
 # --- 비교 / 동등성 ---
 
 @pytest.mark.parametrize(
@@ -194,13 +240,13 @@ def test_assembler_variable_declaration_and_usage():
     sut.execute()
 
     assert sut.ast == [
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a"), initializer=LiteralExpr(10.0)),
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "b"), initializer=LiteralExpr(20.0)),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=2), initializer=LiteralExpr(10.0)),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "b", line=3), initializer=LiteralExpr(20.0)),
         PrintStmt(
             expression=BinaryExpr(
-                left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
-                operator=Token(TokenType.PLUS, "+"),
-                right=VariableExpr(Token(TokenType.IDENTIFIER, "b")),
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "a", line=4)),
+                operator=Token(TokenType.PLUS, "+", line=4),
+                right=VariableExpr(Token(TokenType.IDENTIFIER, "b", line=4)),
             )
         ),
     ]
@@ -217,18 +263,18 @@ def test_assembler_variable_reassignment():
     sut.execute()
 
     assert sut.ast == [
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a"), initializer=LiteralExpr(10.0)),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=2), initializer=LiteralExpr(10.0)),
         ExpressionStmt(
             expression=AssignExpr(
-                name=Token(TokenType.IDENTIFIER, "a"),
+                name=Token(TokenType.IDENTIFIER, "a", line=3),
                 value=BinaryExpr(
-                    left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
-                    operator=Token(TokenType.PLUS, "+"),
+                    left=VariableExpr(Token(TokenType.IDENTIFIER, "a", line=3)),
+                    operator=Token(TokenType.PLUS, "+", line=3),
                     right=LiteralExpr(5.0),
                 ),
             )
         ),
-        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "a"))),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "a", line=4))),
     ]
 
 
@@ -246,14 +292,14 @@ def test_assembler_block_scope_and_shadowing():
     sut.execute()
 
     assert sut.ast == [
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x"), initializer=LiteralExpr("global")),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x", line=2), initializer=LiteralExpr("global")),
         BlockStmt(
             statements=[
-                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x"), initializer=LiteralExpr("inner")),
-                PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x"))),
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "x", line=4), initializer=LiteralExpr("inner")),
+                PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x", line=5))),
             ]
         ),
-        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x"))),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "x", line=7))),
     ]
 
 
@@ -270,22 +316,22 @@ def test_assembler_inner_block_modifies_outer_variable():
     sut.execute()
 
     assert sut.ast == [
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "count"), initializer=LiteralExpr(0.0)),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "count", line=2), initializer=LiteralExpr(0.0)),
         BlockStmt(
             statements=[
                 ExpressionStmt(
                     expression=AssignExpr(
-                        name=Token(TokenType.IDENTIFIER, "count"),
+                        name=Token(TokenType.IDENTIFIER, "count", line=4),
                         value=BinaryExpr(
-                            left=VariableExpr(Token(TokenType.IDENTIFIER, "count")),
-                            operator=Token(TokenType.PLUS, "+"),
+                            left=VariableExpr(Token(TokenType.IDENTIFIER, "count", line=4)),
+                            operator=Token(TokenType.PLUS, "+", line=4),
                             right=LiteralExpr(1.0),
                         ),
                     )
                 )
             ]
         ),
-        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "count"))),
+        PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "count", line=6))),
     ]
 
 
@@ -304,17 +350,17 @@ def test_assembler_nested_scope_resolution():
     sut.execute()
 
     assert sut.ast == [
-        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "outer"), initializer=LiteralExpr("A")),
+        VarDeclStmt(name=Token(TokenType.IDENTIFIER, "outer", line=2), initializer=LiteralExpr("A")),
         BlockStmt(
             statements=[
-                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "inner"), initializer=LiteralExpr("B")),
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "inner", line=4), initializer=LiteralExpr("B")),
                 BlockStmt(
                     statements=[
                         PrintStmt(
                             expression=BinaryExpr(
-                                left=VariableExpr(Token(TokenType.IDENTIFIER, "outer")),
-                                operator=Token(TokenType.PLUS, "+"),
-                                right=VariableExpr(Token(TokenType.IDENTIFIER, "inner")),
+                                left=VariableExpr(Token(TokenType.IDENTIFIER, "outer", line=6)),
+                                operator=Token(TokenType.PLUS, "+", line=6),
+                                right=VariableExpr(Token(TokenType.IDENTIFIER, "inner", line=6)),
                             )
                         )
                     ]
@@ -385,6 +431,50 @@ def test_assembler_dangling_else_binds_to_nearest_if():
     ]
 
 
+def test_assembler_if_else_nested_block():
+    source = """
+    if (true)
+    {
+      print 10 + 20;
+    }
+    else
+    {
+      print 30 + 40;
+    }
+    """
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=BlockStmt(
+                statements=[
+                    PrintStmt(
+                        expression=BinaryExpr(
+                            left=LiteralExpr(10.0),
+                            operator=Token(TokenType.PLUS, "+", line=4),
+                            right=LiteralExpr(20.0),
+                        )
+                    )
+                ]
+            ),
+            else_branch=BlockStmt(
+                statements=[
+                    PrintStmt(
+                        expression=BinaryExpr(
+                            left=LiteralExpr(30.0),
+                            operator=Token(TokenType.PLUS, "+", line=8),
+                            right=LiteralExpr(40.0),
+                        )
+                    )
+                ]
+            ),
+        )
+    ]
+
+
 def test_assembler_for_loop():
     source = "for (var j = 0; j < 3; j = j + 1) { print j; }"
     sut = Assembler(source)
@@ -394,6 +484,35 @@ def test_assembler_for_loop():
     assert sut.ast == [
         ForStmt(
             initializer=VarDeclStmt(name=Token(TokenType.IDENTIFIER, "j"), initializer=LiteralExpr(0.0)),
+            condition=BinaryExpr(
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "j")),
+                operator=Token(TokenType.LESS, "<"),
+                right=LiteralExpr(3.0),
+            ),
+            increment=AssignExpr(
+                name=Token(TokenType.IDENTIFIER, "j"),
+                value=BinaryExpr(
+                    left=VariableExpr(Token(TokenType.IDENTIFIER, "j")),
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(1.0),
+                ),
+            ),
+            body=BlockStmt(
+                statements=[PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "j")))]
+            ),
+        )
+    ]
+
+
+def test_assembler_for_loop_without_initialization():
+    source = "for (; j < 3; j = j + 1) { print j; }"
+    sut = Assembler(source)
+
+    sut.execute()
+
+    assert sut.ast == [
+        ForStmt(
+            initializer=None,
             condition=BinaryExpr(
                 left=VariableExpr(Token(TokenType.IDENTIFIER, "j")),
                 operator=Token(TokenType.LESS, "<"),
