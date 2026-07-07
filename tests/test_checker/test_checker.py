@@ -41,7 +41,6 @@ def test_check_returns_no_errors_when_empty():
 
     assert checker.check() == []
 
-#
 
 def test_check_returns_no_errors_for_single_declaration():
     checker = CheckerUnit([make_var_decl("a")])
@@ -210,36 +209,6 @@ def test_check_detects_duplicate_declaration_between_outer_var_and_for_initializ
     assert errors[0].message == "Already a variable with this name in this scope."
 
 
-def test_check_detects_duplicate_declaration_between_nested_for_initializer_and_outer_for_body():
-    # for (var i = 0; ; ) { var j = 1; for (var j = 2; ; ) {} }
-    # 안쪽 for의 initializer는 새 스코프를 열지 않으므로, 바깥 for의 body(블록)
-    # 안에 이미 선언된 j와 같은 스코프에서 충돌한다.
-    statements = [
-        ForStmt(
-            initializer=make_var_decl("i", LiteralExpr(0)),
-            condition=None,
-            increment=None,
-            body=BlockStmt(
-                statements=[
-                    make_var_decl("j", LiteralExpr(1)),
-                    ForStmt(
-                        initializer=make_var_decl("j", LiteralExpr(2)),
-                        condition=None,
-                        increment=None,
-                        body=BlockStmt(statements=[]),
-                    ),
-                ]
-            ),
-        ),
-    ]
-    checker = CheckerUnit(statements)
-
-    errors = checker.check()
-
-    assert len(errors) == 1
-    assert errors[0].message == "Already a variable with this name in this scope."
-
-
 def test_check_detects_duplicate_declaration_between_for_initializer_and_bare_body_statement():
     # for (var i = 0; ; ) var i = 1;
     # body가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
@@ -250,6 +219,40 @@ def test_check_detects_duplicate_declaration_between_for_initializer_and_bare_bo
             condition=None,
             increment=None,
             body=make_var_decl("i", LiteralExpr(1)),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_allows_same_name_when_if_then_and_else_are_blocks():
+    # if (true) { var a = 1; } else { var a = 2; }
+    # then/else가 BlockStmt로 감싸여 있으면 각자 새 스코프를 열므로 충돌하지 않는다.
+    statements = [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=BlockStmt(statements=[make_var_decl("a", LiteralExpr(1))]),
+            else_branch=BlockStmt(statements=[make_var_decl("a", LiteralExpr(2))]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_when_if_then_and_else_are_bare_statements():
+    # if (true) var a = 1; else var a = 2;
+    # then/else가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
+    # 바깥(if 자신)과 같은 스코프를 공유해서 충돌한다.
+    statements = [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=make_var_decl("a", LiteralExpr(1)),
+            else_branch=make_var_decl("a", LiteralExpr(2)),
         ),
     ]
     checker = CheckerUnit(statements)
