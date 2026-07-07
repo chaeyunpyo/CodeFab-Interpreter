@@ -1,46 +1,20 @@
-"""Executor: Expression 평가와 Statement 실행을 함께 처리한다.
-
-Public API:
-    evaluate(expr, storage) -> Any   - Expr 트리를 평가해 값 하나를 반환
-    execute(stmt, storage) -> None   - Stmt 하나를 실행 (부수효과만 발생)
-    stringify(value) -> str          - print 출력 / 오류 메시지용 문자열 변환
-
-"""
-
 import operator
 from typing import Any, Callable, Dict, Type
 
 from nodes import (
     AssignExpr,
     BinaryExpr,
-    BlockStmt,
     Expr,
-    ExpressionStmt,
-    ForStmt,
     GroupingExpr,
-    IfStmt,
     LiteralExpr,
     LogicalExpr,
-    PrintStmt,
-    Stmt,
     UnaryExpr,
-    VarDeclStmt,
     VariableExpr,
 )
 from nodes.token_type import TokenType
 from storage import Storage
 
-
-class ExecutionError(Exception):
-    """Executor 실행 중 발생하는 오류의 최상위 타입."""
-
-
-class TypeMismatchError(ExecutionError):
-    """피연산자 타입이 연산자와 맞지 않을 때. 예: 3 - "hello" (PDF p.86)"""
-
-
-class DivideByZeroError(ExecutionError):
-    """나눗셈의 제수(divisor)가 0일 때. 예: 3 / 0 (PDF p.88)"""
+from .errors import DivideByZeroError, TypeMismatchError
 
 
 def _is_number(value: Any) -> bool:
@@ -56,9 +30,6 @@ def _check_number_operand(value: Any) -> None:
 def _check_number_operands(left: Any, right: Any) -> None:
     if not _is_number(left) or not _is_number(right):
         raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.")
-
-
-# ── Expression 평가 ───────────────────────────────────────────────────────────
 
 
 def _evaluate_literal(expr: LiteralExpr, storage: Storage) -> Any:
@@ -153,71 +124,6 @@ def evaluate(expr: Expr, storage: Storage) -> Any:
     if handler is None:
         raise NotImplementedError(f"{type(expr).__name__} 평가는 아직 구현되지 않았습니다.")
     return handler(expr, storage)
-
-
-# ── Statement 실행 ────────────────────────────────────────────────────────────
-
-
-def _execute_expression_stmt(stmt: ExpressionStmt, storage: Storage) -> None:
-    evaluate(stmt.expression, storage)
-
-
-def _execute_print_stmt(stmt: PrintStmt, storage: Storage) -> None:
-    value = evaluate(stmt.expression, storage)
-    print(stringify(value))
-
-
-def _execute_var_decl_stmt(stmt: VarDeclStmt, storage: Storage) -> None:
-    value = evaluate(stmt.initializer, storage) if stmt.initializer is not None else None
-    storage.define(stmt.name.lexeme, value)
-
-
-def _execute_block_stmt(stmt: BlockStmt, storage: Storage) -> None:
-    # PDF p.82-83 : 블록 진입 시 새 로컬 스코프 생성, 종료 시 소멸.
-    storage.push_scope()
-    try:
-        for inner_stmt in stmt.statements:
-            execute(inner_stmt, storage)
-    finally:
-        storage.pop_scope()
-
-
-def _execute_if_stmt(stmt: IfStmt, storage: Storage) -> None:
-    if evaluate(stmt.condition, storage):
-        execute(stmt.then_branch, storage)
-    elif stmt.else_branch is not None:
-        execute(stmt.else_branch, storage)
-
-
-def _execute_for_stmt(stmt: ForStmt, storage: Storage) -> None:
-    """C-style ForStmt를 실행한다. for (initializer; condition; increment) body"""
-    if stmt.initializer is not None:
-        execute(stmt.initializer, storage)
-    while True:
-        if stmt.condition is not None:
-            if not evaluate(stmt.condition, storage):
-                break
-        execute(stmt.body, storage)
-        if stmt.increment is not None:
-            evaluate(stmt.increment, storage)
-
-
-_STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
-    ExpressionStmt: _execute_expression_stmt,
-    PrintStmt: _execute_print_stmt,
-    VarDeclStmt: _execute_var_decl_stmt,
-    BlockStmt: _execute_block_stmt,
-    IfStmt: _execute_if_stmt,
-    ForStmt: _execute_for_stmt,
-}
-
-
-def execute(stmt: Stmt, storage: Storage) -> None:
-    """Stmt 하나를 실행한다."""
-    handler = _STMT_EXECUTORS.get(type(stmt))
-    if handler is None:
-        raise NotImplementedError(f"{type(stmt).__name__} 실행은 아직 구현되지 않았습니다.")
-    handler(stmt, storage)
 
 
 def stringify(value: Any) -> str:
