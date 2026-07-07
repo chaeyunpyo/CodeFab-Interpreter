@@ -215,3 +215,22 @@ def test_step13_two_char_comparison_operators(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 14단계: 2문자 비교 연산자 (추가분: =<, => — TokenType.md에는 아직 미반영) ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("=<", TokenType.EQUAL_LESS),     # a =< b
+        ("=>", TokenType.EQUAL_GREATER),  # a => b
+    ],
+)
+def test_step14_equal_prefixed_comparison_operators(source, expected_type):
+    """= 뒤에 <, >가 붙으면 단일 문자가 아니라 2문자 비교 연산자여야 한다."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
