@@ -234,3 +234,46 @@ def test_step14_equal_prefixed_comparison_operators(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 15단계: 논리 연산자 키워드 (and, or) ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("and", TokenType.AND),  # true and false
+        ("or", TokenType.OR),    # true or false
+    ],
+)
+def test_step15_logical_keywords(source, expected_type):
+    """and/or는 IDENTIFIER가 아니라 전용 타입이어야 한다."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 16단계: 단항 부정 연산자 (!) ---
+
+def test_step16_single_bang():
+    """!true 처럼 논리 부정(NOT)에 쓰이는 '!' 하나."""
+    tokenizer = Tokenizer("!")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.BANG, "!"),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 17단계: 부정 비교 연산자 (!=) ---
+
+def test_step17_bang_equal():
+    """! 뒤에 =가 붙으면 단일 문자가 아니라 2문자 비교 연산자(같지 않음)여야 한다."""
+    tokenizer = Tokenizer("!=")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.BANG_EQUAL, "!="),
+        Token(TokenType.EOF, ""),
+    ]

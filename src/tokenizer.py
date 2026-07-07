@@ -16,6 +16,7 @@ class Tokenizer:
         ">": TokenType.GREATER,
         "=": TokenType.EQUAL,
         ";": TokenType.SEMICOLON,
+        "!": TokenType.BANG,
     }
 
     TWO_CHAR_TOKENS = {
@@ -24,6 +25,7 @@ class Tokenizer:
         "<=": TokenType.LESS_EQUAL,
         "=<": TokenType.EQUAL_LESS,
         "=>": TokenType.EQUAL_GREATER,
+        "!=": TokenType.BANG_EQUAL,
     }
 
     KEYWORDS = {
@@ -34,6 +36,8 @@ class Tokenizer:
         "for": TokenType.FOR,
         "true": TokenType.TRUE,
         "false": TokenType.FALSE,
+        "and": TokenType.AND,
+        "or": TokenType.OR,
     }
 
     def __init__(self, source: str):
