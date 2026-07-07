@@ -4,18 +4,13 @@ import dataclasses
 
 from nodes.expr import Expr, VariableExpr
 from nodes.stmt import BlockStmt, ForStmt, IfStmt, VarDeclStmt
+from source_error import SourceError
 
 
-class CheckerError(Exception):
+class CheckerError(SourceError):
     """검사 중 발견한 오류 하나를 표현한다."""
 
-    def __init__(self, message, token):
-        super().__init__(message)
-        self.message = message
-        self.token = token
-
-    def __str__(self):
-        return f"[Line {self.token.line}] {self.message}"
+    UNIT = "Checker"
 
 
 class ExprNameFinder:

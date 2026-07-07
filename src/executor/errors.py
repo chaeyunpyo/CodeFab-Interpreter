@@ -1,14 +1,13 @@
 from typing import Optional
 
 from nodes.tokens import Token
+from source_error import SourceError
 
 
-class ExecutionError(Exception):
+class ExecutionError(SourceError):
     """Executor 실행 중 발생하는 오류의 최상위 타입."""
 
-    def __init__(self, message: str, token: Optional[Token] = None):
-        super().__init__(message)
-        self.token = token
+    UNIT = "Executor"
 
 
 class TypeMismatchError(ExecutionError):
