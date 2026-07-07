@@ -1,4 +1,4 @@
-from checker.checker import CheckerUnit
+from checker import CheckerUnit
 from nodes.expr import LiteralExpr, VariableExpr
 from nodes.stmt import BlockStmt, ExpressionStmt, VarDeclStmt
 from nodes.tokens import Token

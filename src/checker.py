@@ -1,21 +1,4 @@
-"""Checker Unit 정의.
-
-Checker Unit이 검출하는 오류:
-- 변수 중복 선언 오류 (같은 블록 안에서 같은 이름을 두 번 선언)
-- 지역 변수 초기화식에서 자기 자신을 읽는 오류 (예: var a = a;)
-
-동작 방식:
-Stmt 목록을 받아서 하나씩 순서대로 검사한다. 블록(BlockStmt)을 만나면
-그 안으로 들어가서 다시 검사하고, if/for 문을 만나면 그 안의 statement도
-계속 검사한다. 이렇게 안쪽까지 파고들며 검사하는 방식을 DFS(깊이 우선 탐색)
-라고 부른다.
-
-역할 구분:
-- CheckerError    : 오류 하나를 표현
-- ExprNameFinder  : Expr 트리 안에서 특정 변수 이름을 쓰는 곳이 있는지 찾음
-- ScopeChecker    : 블록 하나(스코프) 안의 변수 선언 오류를 검사
-- CheckerUnit     : Stmt 목록을 DFS로 순회하며 어디서 새 스코프를 열지 결정
-"""
+"""Checker Unit 정의. 자세한 설명은 checker_summary.txt 참고."""
 
 import dataclasses
 
@@ -33,8 +16,10 @@ class CheckerError(Exception):
 
 
 class ExprNameFinder:
+    """Expr 안에서 특정 변수 이름을 쓰는 곳이 있는지 찾는다."""
+
     def uses_name(self, expr, name):
-        # 투박한 방어 코드: expr이 진짜 Expr가 아니면(예: 손상된 AST) 그냥 False.
+        # expr이 진짜 Expr가 아니면(예: 손상된 AST) 그냥 False.
         if not isinstance(expr, Expr):
             return False
 
@@ -50,13 +35,16 @@ class ExprNameFinder:
 
 
 class ScopeChecker:
-    def __init__(self, expr_name_finder):
+    """블록 하나(스코프)의 변수 선언 오류를 검사한다."""
+
+    def __init__(self, expr_name_finder, errors):
         self.declared_names = []
         self.expr_name_finder = expr_name_finder
+        self.errors = errors
 
-    def check_var_decl(self, statement, errors):
+    def check_var_decl(self, statement):
         """변수 선언문(var a = ...;) 하나를 검사한다."""
-        # 투박한 방어 코드: name 토큰이 없으면(손상된 AST) 그냥 넘어간다.
+        # name 토큰이 없으면(손상된 AST) 그냥 넘어간다.
         if statement.name is None:
             return
 
@@ -66,46 +54,54 @@ class ScopeChecker:
         if statement.initializer is not None:
             if self.expr_name_finder.uses_name(statement.initializer, name):
                 message = "Can't read local variable in initializer."
-                errors.append(CheckerError(message, statement.name))
+                self.errors.append(CheckerError(message, statement.name))
 
         # 2. 같은 블록에 이미 같은 이름이 선언되어 있었는지 검사한다.
         if name in self.declared_names:
             message = "Already a variable with this name in this scope."
-            errors.append(CheckerError(message, statement.name))
+            self.errors.append(CheckerError(message, statement.name))
         else:
             self.declared_names.append(name)
 
 
 class CheckerUnit:
+    """Stmt 목록을 DFS로 순회하며 오류를 찾는다."""
+
     def __init__(self, statements):
         self.statements = statements
         self.expr_name_finder = ExprNameFinder()
+        self.errors = []
+        self.visited_blocks = set()
 
     def check(self):
-        errors = []
-        self.check_block(self.statements, errors)
-        return errors
+        self.errors = []
+        self.visited_blocks = set()
+        self.check_block(self.statements)
+        return self.errors
 
-    def check_block(self, statements, errors):
-        scope = ScopeChecker(self.expr_name_finder)
+    def check_block(self, statements):
+        scope = ScopeChecker(self.expr_name_finder, self.errors)
         for statement in statements:
-            self.check_statement(statement, scope, errors)
+            self.check_statement(statement, scope)
 
-    def check_statement(self, statement, scope, errors):
-
+    def check_statement(self, statement, scope):
         if isinstance(statement, VarDeclStmt):
-            scope.check_var_decl(statement, errors)
+            scope.check_var_decl(statement)
 
         elif isinstance(statement, BlockStmt):
+            # 이미 검사한 블록을 다시 만나면(순환 참조) 더 들어가지 않는다.
+            if id(statement) in self.visited_blocks:
+                return
+            self.visited_blocks.add(id(statement))
             # 블록 안은 새로운 스코프이므로 check_block을 다시 호출한다.
-            self.check_block(statement.statements, errors)
+            self.check_block(statement.statements)
 
         elif isinstance(statement, IfStmt):
-            self.check_statement(statement.then_branch, scope, errors)
+            self.check_statement(statement.then_branch, scope)
             if statement.else_branch is not None:
-                self.check_statement(statement.else_branch, scope, errors)
+                self.check_statement(statement.else_branch, scope)
 
         elif isinstance(statement, ForStmt):
             if statement.initializer is not None:
-                self.check_statement(statement.initializer, scope, errors)
-            self.check_statement(statement.body, scope, errors)
+                self.check_statement(statement.initializer, scope)
+            self.check_statement(statement.body, scope)
