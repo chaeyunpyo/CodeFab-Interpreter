@@ -23,27 +23,39 @@
 | 의미 분석 | `CheckerUnit` | Stmt 트리를 DFS로 순회하며 실행 전 의미 오류(정적 오류)를 검사         | `src/checker.py`             |
 | 실행    | `Executor`    | Stmt/Expr 트리를 실제로 실행(평가)해서 결과를 만듦               | `src/executor/_stmt.py`, `_expr.py` |
 | 저장소   | `Storage`     | 변수 스코프(전역/블록)를 스택으로 관리하며 값을 저장·조회                | `src/executor/_storage.py`   |
-| 공통    | `SourceError` | Checker/Executor 오류가 공통으로 상속하는 베이스 (Unit, 줄 번호) | `src/source_error.py`        |
+| 공통    | `SourceError` | Assembler/Checker/Executor 오류가 공통으로 상속하는 베이스 (Unit, 줄 번호) | `src/source_error.py`        |
 
 `Assembler`, `Executor`는 각각 `assembler/`, `executor/` 패키지의
 `__init__.py`가 내부 모듈(`_assembler.py`, `_stmt.py` 등)을 묶어서
-바깥으로 노출하는 구조다. 최상위 `src/storage.py`도 파일은 남아있지만
-Executor는 자기 패키지 안의 `_storage.py`를 쓰므로, Pipeline도 반드시
-`executor._storage.Storage`를 써야 한다 (안 그러면 "정의되지 않은 변수"
-오류가 서로 다른 클래스라서 못 잡힌다).
+바깥으로 노출하는 구조다. `Storage`는 `executor` 패키지 안에만 있고
+(`executor/_storage.py`), `executor/__init__.py`가 공개 API로 내보내므로
+Pipeline은 `from executor import Storage`로 가져다 쓴다.
 
 ## 오류 공통 형식: SourceError
 
-Checker와 Executor가 만드는 오류는 전부 `source_error.SourceError`를
+Assembler, Checker, Executor가 만드는 오류는 전부 `source_error.SourceError`를
 상속한다. 클래스마다 `UNIT` 값만 다르고, 나머지(message, token, line,
 문자열 표현)는 공통이다.
 
     print(error)
+    -> "[Assembler] Line 1: Expected ';' after variable declaration"
     -> "[Checker] Line 5: Already a variable with this name in this scope."
     -> "[Executor] Line 1: 0으로 나눌 수 없습니다."
 
-이 덕분에 `Pipeline.run()`은 오류가 Checker에서 났는지 Executor에서
-났는지 따로 분기하지 않고, 둘 다 그냥 오류 리스트로 반환하면 된다.
+이 덕분에 `Pipeline.run()`은 오류가 Assembler/Checker/Executor 중
+어디서 났는지 따로 분기하지 않고, 셋 다 그냥 오류 리스트로 반환하면 된다.
+
+## Assembler Unit이 검출하는 오류
+
+| 분류              | 예외 클래스                       | 예시            |
+| --------------- | ---------------------------- | ------------- |
+| 해석할 수 없는 문자     | `TokenizerError`              | `var a = @;`  |
+| 필요한 토큰 누락       | `MissingTokenError`           | `var a = 3`（세미콜론 없음） |
+| 해석할 수 없는 토큰     | `UnexpectedTokenError`        | `*3;`         |
+| 잘못된 대입 대상       | `InvalidAssignmentTargetError` | `3 = 5;`      |
+
+모두 `src/assembler/errors.py`에 정의되어 있고, `AssemblerError`(공통
+상위 타입)를 거쳐 `SourceError`를 상속한다.
 
 ## Checker Unit이 검출하는 오류
 

@@ -1,4 +1,4 @@
-from assembler import Assembler
+from assembler import Assembler, AssemblerError
 from checker import CheckerUnit
 from executor import ExecutionError, Storage, execute
 
@@ -10,7 +10,10 @@ class Pipeline:
         self.storage = Storage()
 
     def run(self, source):
-        statements = self._assemble(source)
+        try:
+            statements = self._assemble(source)
+        except AssemblerError as error:
+            return [error]
 
         checker_errors = self._check(statements)
         if checker_errors:
