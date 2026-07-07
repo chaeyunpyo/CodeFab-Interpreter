@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from tokens import Token
+from .tokens import Token
 
 
 class Expr:
