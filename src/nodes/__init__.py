@@ -1,4 +1,5 @@
-from expr import (
+from .ast_node import *
+from .expr import (
     AssignExpr,
     BinaryExpr,
     Expr,
@@ -8,7 +9,7 @@ from expr import (
     UnaryExpr,
     VariableExpr,
 )
-from stmt import (
+from .stmt import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
