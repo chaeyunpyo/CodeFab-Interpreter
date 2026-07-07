@@ -1,6 +1,6 @@
 import pytest
 
-from prompt_shell import PromptShell, run_cli
+from prompt_shell import PromptShell, main, run_cli, run_file
 
 
 # --- 0단계: 가장 단순한 케이스 (print 문 한 줄을 실행하면 결과가 출력되어야 한다) ---
@@ -218,3 +218,53 @@ def test_step13_run_cli_stops_on_eof(monkeypatch, capsys):
 
     # EOF를 만나면 커서를 다음 줄로 넘기기 위한 개행이 하나 더 찍힌다 (터미널 UX).
     assert capsys.readouterr().out == "1\n\n"
+
+# --- 14단계: run_file() - 파일 하나를 통째로 읽어 한 번에 실행 ---
+
+def test_step14_run_file_executes_whole_file_at_once(tmp_path, capsys):
+    """파일 내용을 한 번에 읽어 실행하면, 여러 줄에 걸친 블록도 정상 동작해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text(
+        'var x = "global";\n'
+        "{\n"
+        '  var x = "inner";\n'
+        "  print x;\n"
+        "}\n"
+        "print x;\n",
+        encoding="utf-8",
+    )
+
+    run_file(str(script))
+
+    assert capsys.readouterr().out == "inner\nglobal\n"
+
+
+def test_step14_run_file_reports_missing_file_without_crashing(capsys):
+    """존재하지 않는 파일 경로를 주면, 예외가 그대로 튀어나오지 않고 메시지만 출력해야 한다."""
+    run_file("이런_파일은_없다.txt")
+
+    assert capsys.readouterr().out != ""
+
+# --- 15단계: main() - 실행 모드(Prompt Shell/파일) 선택 진입점 ---
+
+def test_step15_main_runs_prompt_shell_when_chosen(monkeypatch, capsys):
+    """'1'을 선택하면 Prompt Shell(REPL) 모드로 진입해야 한다."""
+    inputs = iter(["1", "print 1;", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    main()
+
+    assert capsys.readouterr().out.endswith("1\n")
+
+
+def test_step15_main_runs_file_when_chosen(monkeypatch, tmp_path, capsys):
+    """'2'를 선택하면 파일 경로를 입력받아 해당 파일을 실행해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 42;\n", encoding="utf-8")
+
+    inputs = iter(["2", str(script)])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    main()
+
+    assert capsys.readouterr().out.endswith("42\n")

@@ -75,3 +75,28 @@ def run_cli() -> None:
             break
 
         shell.run(line)
+
+
+def run_file(path: str) -> None:
+    """파일 하나를 읽어 전체 내용을 한 번에 실행한다."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            source = f.read()
+    except OSError as error:
+        print(f"파일을 열 수 없습니다: {error}")
+        return
+
+    PromptShell().run(source)
+
+
+def main() -> None:
+    """실행 모드를 고르게 하는 진입점 (1: Prompt Shell, 2: 파일 실행)."""
+    print("1. Prompt Shell")
+    print("2. 파일 실행")
+    choice = input("모드를 선택하세요: ").strip()
+
+    if choice == "2":
+        path = input("파일 경로를 입력하세요: ").strip()
+        run_file(path)
+    else:
+        run_cli()

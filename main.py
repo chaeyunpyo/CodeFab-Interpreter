@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from prompt_shell import run_cli
+from prompt_shell import main
 
 if __name__ == "__main__":
-    run_cli()
+    main()
