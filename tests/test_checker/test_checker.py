@@ -1,6 +1,6 @@
 from checker import CheckerUnit
-from nodes.expr import LiteralExpr, VariableExpr
-from nodes.stmt import BlockStmt, ExpressionStmt, VarDeclStmt
+from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
+from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, VarDeclStmt
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
@@ -41,7 +41,6 @@ def test_check_returns_no_errors_when_empty():
 
     assert checker.check() == []
 
-#
 
 def test_check_returns_no_errors_for_single_declaration():
     checker = CheckerUnit([make_var_decl("a")])
@@ -57,6 +56,17 @@ def test_check_detects_duplicate_declaration_in_same_block():
 
     assert len(errors) == 1
     assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_error_str_includes_line_number():
+    first = VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=3), initializer=None)
+    second = VarDeclStmt(name=Token(TokenType.IDENTIFIER, "a", line=5), initializer=None)
+    checker = CheckerUnit([first, second])
+
+    errors = checker.check()
+
+    assert str(errors[0]) == "[Line 5] Already a variable with this name in this scope."
+
 
 # 변수 중복 선언 검사
 
@@ -149,3 +159,105 @@ def test_check_does_not_crash_on_self_referencing_block():
     errors = checker.check()
 
     assert isinstance(errors, list)
+
+
+# for 문 검사
+def test_check_for_loop_with_no_issues_has_no_errors():
+    # for (var i = 0; i < 10; i = i + 1) { print i; }
+    i_token = Token(TokenType.IDENTIFIER, "i")
+    statements = [
+        ForStmt(
+            initializer=VarDeclStmt(name=i_token, initializer=LiteralExpr(0)),
+            condition=BinaryExpr(
+                left=VariableExpr(i_token),
+                operator=Token(TokenType.LESS, "<"),
+                right=LiteralExpr(10),
+            ),
+            increment=AssignExpr(
+                name=i_token,
+                value=BinaryExpr(
+                    left=VariableExpr(i_token),
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(1),
+                ),
+            ),
+            body=BlockStmt(statements=[PrintStmt(expression=VariableExpr(i_token))]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_between_outer_var_and_for_initializer():
+    # var i = 0; for (var i = 1; ; ) {}
+    # for의 initializer는 새 스코프를 열지 않으므로 바깥의 i와 충돌한다.
+    statements = [
+        make_var_decl("i", LiteralExpr(0)),
+        ForStmt(
+            initializer=make_var_decl("i", LiteralExpr(1)),
+            condition=None,
+            increment=None,
+            body=BlockStmt(statements=[]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_duplicate_declaration_between_for_initializer_and_bare_body_statement():
+    # for (var i = 0; ; ) var i = 1;
+    # body가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
+    # initializer와 body가 같은 스코프를 공유해서 충돌한다.
+    statements = [
+        ForStmt(
+            initializer=make_var_decl("i", LiteralExpr(0)),
+            condition=None,
+            increment=None,
+            body=make_var_decl("i", LiteralExpr(1)),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_allows_same_name_when_if_then_and_else_are_blocks():
+    # if (true) { var a = 1; } else { var a = 2; }
+    # then/else가 BlockStmt로 감싸여 있으면 각자 새 스코프를 열므로 충돌하지 않는다.
+    statements = [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=BlockStmt(statements=[make_var_decl("a", LiteralExpr(1))]),
+            else_branch=BlockStmt(statements=[make_var_decl("a", LiteralExpr(2))]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_declaration_when_if_then_and_else_are_bare_statements():
+    # if (true) var a = 1; else var a = 2;
+    # then/else가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
+    # 바깥(if 자신)과 같은 스코프를 공유해서 충돌한다.
+    statements = [
+        IfStmt(
+            condition=LiteralExpr(True),
+            then_branch=make_var_decl("a", LiteralExpr(1)),
+            else_branch=make_var_decl("a", LiteralExpr(2)),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
