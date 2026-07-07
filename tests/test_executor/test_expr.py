@@ -103,6 +103,16 @@ class TestEvaluateBinaryArithmetic:
         with pytest.raises(TypeMismatchError):
             evaluate(expr, storage)
 
+    def test_문자열끼리_더하면_이어붙인다(self, storage):
+        # print "Hello, " + "CodeFab!"; // expect: Hello, CodeFab!
+        expr = BinaryExpr(LiteralExpr("Hello, "), tok(TokenType.PLUS, "+"), LiteralExpr("CodeFab!"))
+        assert evaluate(expr, storage) == "Hello, CodeFab!"
+
+    def test_문자열과_숫자를_더하면_타입_오류가_발생한다(self, storage):
+        expr = BinaryExpr(LiteralExpr("hello"), tok(TokenType.PLUS, "+"), LiteralExpr(3.0))
+        with pytest.raises(TypeMismatchError):
+            evaluate(expr, storage)
+
 
 class TestEvaluateBinaryComparison:
     def test_큰_비교가_참인_경우(self, storage):
