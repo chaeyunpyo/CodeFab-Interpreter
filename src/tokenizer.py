@@ -34,6 +34,8 @@ class Tokenizer:
         "for": TokenType.FOR,
         "true": TokenType.TRUE,
         "false": TokenType.FALSE,
+        "and": TokenType.AND,
+        "or": TokenType.OR,
     }
 
     def __init__(self, source: str):

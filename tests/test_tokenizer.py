@@ -234,3 +234,22 @@ def test_step14_equal_prefixed_comparison_operators(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 15단계: 논리 연산자 키워드 (and, or) ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("and", TokenType.AND),  # true and false
+        ("or", TokenType.OR),    # true or false
+    ],
+)
+def test_step15_logical_keywords(source, expected_type):
+    """and/or는 IDENTIFIER가 아니라 전용 타입이어야 한다."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
