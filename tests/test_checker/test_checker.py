@@ -1,6 +1,6 @@
 from checker import CheckerUnit
-from nodes.expr import LiteralExpr, VariableExpr
-from nodes.stmt import BlockStmt, ExpressionStmt, VarDeclStmt
+from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
+from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, VarDeclStmt
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
@@ -160,3 +160,31 @@ def test_check_does_not_crash_on_self_referencing_block():
     errors = checker.check()
 
     assert isinstance(errors, list)
+
+
+# for 문 검사
+def test_check_for_loop_with_no_issues_has_no_errors():
+    # for (var i = 0; i < 10; i = i + 1) { print i; }
+    i_token = Token(TokenType.IDENTIFIER, "i")
+    statements = [
+        ForStmt(
+            initializer=VarDeclStmt(name=i_token, initializer=LiteralExpr(0)),
+            condition=BinaryExpr(
+                left=VariableExpr(i_token),
+                operator=Token(TokenType.LESS, "<"),
+                right=LiteralExpr(10),
+            ),
+            increment=AssignExpr(
+                name=i_token,
+                value=BinaryExpr(
+                    left=VariableExpr(i_token),
+                    operator=Token(TokenType.PLUS, "+"),
+                    right=LiteralExpr(1),
+                ),
+            ),
+            body=BlockStmt(statements=[PrintStmt(expression=VariableExpr(i_token))]),
+        ),
+    ]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
