@@ -1,6 +1,7 @@
 from nodes.token_type import TokenType
 from nodes import (
     BlockStmt,
+    ClassStmt,
     ExpressionStmt,
     ForStmt,
     FunctionStmt,
@@ -8,6 +9,7 @@ from nodes import (
     PrintStmt,
     ReturnStmt,
     VarDeclStmt,
+    VariableExpr,
 )
 
 
@@ -32,6 +34,7 @@ class StatementParser:
             TokenType.LEFT_BRACE: self.block_statement,
             TokenType.FUNC: self.function_statement,
             TokenType.RETURN: self.return_statement,
+            TokenType.CLASS: self.class_statement,
         }
 
     # --- 선언 (declarations) ---
@@ -133,6 +136,58 @@ class StatementParser:
         body = self.block()
 
         return FunctionStmt(name=name, params=params, body=body, line=line)
+
+    def class_statement(self):
+        """`Class` IDENTIFIER (`:` IDENTIFIER)? `{` method* `}` 형태의 클래스 선언을 파싱한다.
+        (요구사항_정리/class.md)
+
+        상속(`:`) 뒤의 부모 클래스 이름은 VariableExpr로 감싼다 — 실제로
+        클래스인지는 변수라 재할당될 수 있어 런타임에만 확정되기 때문에
+        (요구사항_정리/class.md의 "클래스가 아닌 대상 상속" 오류 참고),
+        여기서는 이름만 참조로 남겨두고 값 확인은 Executor 몫으로 둔다.
+        """
+        name = self.tokens.consume(TokenType.IDENTIFIER, "Expected class name")
+
+        superclass = None
+        if self.tokens.match(TokenType.COLON):
+            superclass_name = self.tokens.consume(TokenType.IDENTIFIER, "Expected superclass name")
+            superclass = VariableExpr(superclass_name)
+
+        self.tokens.consume(TokenType.LEFT_BRACE, "Expected '{' before class body")
+        methods = []
+        while not self.tokens.check(TokenType.RIGHT_BRACE) and not self.tokens.is_at_end():
+            methods.append(self.method_declaration())
+        self.tokens.consume(TokenType.RIGHT_BRACE, "Expected '}' after class body")
+
+        return ClassStmt(name=name, superclass=superclass, methods=methods)
+
+    def method_declaration(self):
+        """Class 본문 안의 메서드(생성자 init 포함) 선언을 파싱한다. `Func` 키워드
+        없이 IDENTIFIER `(` params? `)` `{` body `}` 형태로 곧장 시작한다.
+        (요구사항_정리/class.md)
+        """
+        return self._finish_function("method")
+
+    def _finish_function(self, kind):
+        """이름부터 본문까지, function_statement()와 method_declaration()이
+        공유하는 `IDENTIFIER (` params? `)` `{` body `}` 부분을 파싱해
+        FunctionStmt를 만든다. kind는 문법 차이 없이 오류 메시지에만 쓰인다
+        ("function" 또는 "method").
+        """
+        name = self.tokens.consume(TokenType.IDENTIFIER, f"Expected {kind} name")
+        self.tokens.consume(TokenType.LEFT_PAREN, f"Expected '(' after {kind} name")
+
+        params = []
+        if not self.tokens.check(TokenType.RIGHT_PAREN):
+            params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+            while self.tokens.match(TokenType.COMMA):
+                params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+        self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
+
+        self.tokens.consume(TokenType.LEFT_BRACE, f"Expected '{{' before {kind} body")
+        body = self.block()
+
+        return FunctionStmt(name=name, params=params, body=body)
 
     def return_statement(self):
         """`return` expression? `;` 형태의 return문을 파싱한다. (요구사항_정리/function.md)

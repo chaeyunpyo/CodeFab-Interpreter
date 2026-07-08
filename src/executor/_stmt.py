@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Type
 
 from nodes import (
     BlockStmt,
+    ClassStmt,
     ExpressionStmt,
     ForStmt,
     FunctionStmt,
@@ -14,6 +15,8 @@ from nodes import (
 from ._storage import Storage
 from ._signals import ReturnSignal
 from ._function import Function
+from ._class import LoxClass
+from .errors import NotAClassError
 
 from ._expr import evaluate, stringify
 
@@ -73,6 +76,19 @@ def _execute_function_stmt(stmt: FunctionStmt, storage: Storage) -> None:
     storage.define(stmt.name.lexeme, Function(stmt))
 
 
+def _execute_class_stmt(stmt: ClassStmt, storage: Storage) -> None:
+    superclass = None
+    if stmt.superclass is not None:
+        superclass = evaluate(stmt.superclass, storage)
+        if not isinstance(superclass, LoxClass):
+            raise NotAClassError(stmt.name)
+
+    klass = LoxClass(stmt.name.lexeme, superclass=superclass)
+    for method_stmt in stmt.methods:
+        klass.methods[method_stmt.name.lexeme] = Function(method_stmt, owner_class=klass)
+    storage.define(stmt.name.lexeme, klass)
+
+
 _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ExpressionStmt: _execute_expression_stmt,
     PrintStmt: _execute_print_stmt,
@@ -82,6 +98,7 @@ _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ForStmt: _execute_for_stmt,
     ReturnStmt: _execute_return_stmt,
     FunctionStmt: _execute_function_stmt,
+    ClassStmt: _execute_class_stmt,
 }
 
 
