@@ -1,4 +1,4 @@
-"""Checker Unit 정의. 자세한 설명은 checker_summary.txt 참고."""
+"""Checker Unit 정의. 자세한 설명은 요구사항_정리/Unit.md 참고."""
 
 import dataclasses
 

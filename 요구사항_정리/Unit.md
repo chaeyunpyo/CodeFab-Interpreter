@@ -59,12 +59,19 @@ Assembler, Checker, Executor가 만드는 오류는 전부 `source_error.SourceE
 
 ## Checker Unit이 검출하는 오류
 
-| 분류         | 메시지                                                 | 예시                          |
-| ---------- | --------------------------------------------------- | --------------------------- |
-| 변수 중복 선언   | `Already a variable with this name in this scope.`  | `{ var a = 1; var a = 2; }` |
-| 초기화식 자기 참조 | `Can't read local variable in initializer.`         | `{ var a = a; }`            |
+| 분류               | 메시지                                                | 예시                            |
+| ---------------- | -------------------------------------------------- | ----------------------------- |
+| 변수 중복 선언         | `Already a variable with this name in this scope.` | `{ var a = 1; var a = 2; }`   |
+| 초기화식 자기 참조       | `Can't read local variable in initializer.`        | `{ var a = a; }`              |
+| 함수 외부 return     | `Can't return from top-level code.`                | `return 5;`                   |
+| 파라미터 이름 중복       | `Already a variable with this name in this scope.` | `Func foo(a, a) { }`          |
+| 클래스 외부 this 사용   | `Can't use 'this' outside of a class.`             | `print this;`                 |
+| 클래스 외부 super 사용  | `Can't use 'super' outside of a class.`            | `super.move();`               |
+| 부모 없는 클래스의 super | `Can't use 'super' in a class with no superclass.` | 상속 없는 클래스 안의 `super.move()`   |
+| 자기 자신 상속         | `A class can't inherit from itself.`               | `Class Robot : Robot { }`     |
+| init에서 값 있는 return | `Can't return a value from an initializer.`      | `init() { return 5; }`        |
 
-자세한 내용은 `checker_summary.txt` 참고.
+자세한 내용은 `요구사항_정리/function.md`, `요구사항_정리/class.md` 참고.
 
 ## Executor Unit이 검출하는 오류
 

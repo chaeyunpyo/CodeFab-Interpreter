@@ -115,8 +115,7 @@ def test_check_detects_self_reference_in_initializer():
 
 
 def test_check_detects_self_reference_even_when_outer_scope_has_same_name():
-    # var a = 1; { var a = a; } -- the local `a` shadows the outer one, so the
-    # initializer still reads the not-yet-initialized local `a`.
+    # var a = 1; { var a = a; }  -- 로컬 a가 바깥을 가려도 초기화식은 로컬 a를 읽는다.
     statements = [
         make_var_decl("a", LiteralExpr(1)),
         BlockStmt(
@@ -188,8 +187,7 @@ def test_check_for_loop_with_no_issues_has_no_errors():
 
 
 def test_check_detects_duplicate_declaration_between_outer_var_and_for_initializer():
-    # var i = 0; for (var i = 1; ; ) {}
-    # for의 initializer는 새 스코프를 열지 않으므로 바깥의 i와 충돌한다.
+    # var i = 0; for (var i = 1; ; ) {}  -- for initializer는 새 스코프를 열지 않는다.
     statements = [
         make_var_decl("i", LiteralExpr(0)),
         ForStmt(
@@ -208,9 +206,7 @@ def test_check_detects_duplicate_declaration_between_outer_var_and_for_initializ
 
 
 def test_check_detects_duplicate_declaration_between_for_initializer_and_bare_body_statement():
-    # for (var i = 0; ; ) var i = 1;
-    # body가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
-    # initializer와 body가 같은 스코프를 공유해서 충돌한다.
+    # for (var i = 0; ; ) var i = 1;  -- body가 블록이 아니면 initializer와 스코프를 공유한다.
     statements = [
         ForStmt(
             initializer=make_var_decl("i", LiteralExpr(0)),
@@ -228,8 +224,7 @@ def test_check_detects_duplicate_declaration_between_for_initializer_and_bare_bo
 
 
 def test_check_allows_same_name_when_if_then_and_else_are_blocks():
-    # if (true) { var a = 1; } else { var a = 2; }
-    # then/else가 BlockStmt로 감싸여 있으면 각자 새 스코프를 열므로 충돌하지 않는다.
+    # if (true) { var a = 1; } else { var a = 2; }  -- 블록이면 각자 새 스코프를 연다.
     statements = [
         IfStmt(
             condition=LiteralExpr(True),
@@ -243,9 +238,7 @@ def test_check_allows_same_name_when_if_then_and_else_are_blocks():
 
 
 def test_check_detects_duplicate_declaration_when_if_then_and_else_are_bare_statements():
-    # if (true) var a = 1; else var a = 2;
-    # then/else가 BlockStmt로 감싸여 있지 않으면 새 스코프가 열리지 않으므로,
-    # 바깥(if 자신)과 같은 스코프를 공유해서 충돌한다.
+    # if (true) var a = 1; else var a = 2;  -- 블록이 아니면 바깥과 스코프를 공유한다.
     statements = [
         IfStmt(
             condition=LiteralExpr(True),

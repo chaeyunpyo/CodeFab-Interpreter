@@ -170,8 +170,7 @@ def test_check_detects_this_used_inside_binary_expression_outside_class():
 
 
 def test_check_allows_super_init_call_when_class_has_superclass():
-    # Class SpeedRobot : Robot { init(name) { super.init(name); } }
-    # PDF 예시(class.md)의 실제 상속+생성자+super 조합을 그대로 재현한다.
+    # Class SpeedRobot : Robot { init(name) { super.init(name); } }  -- 상속+생성자+super 조합.
     init_method = make_function(
         name="init",
         params=[make_param("name")],
@@ -188,9 +187,7 @@ def test_check_allows_super_init_call_when_class_has_superclass():
 
 
 def test_check_does_not_leak_init_flag_between_sibling_methods():
-    # Class Robot { init() { return; } move() { return 5; } }
-    # init을 먼저 검사한 뒤에도 "init 안"이라는 상태가 남아서 다음 메서드의
-    # 정상적인 값 반환까지 오류로 잘못 잡으면 안 된다.
+    # Class Robot { init() { return; } move() { return 5; } }  -- "init 안" 상태가 새면 안 된다.
     init_method = make_function(
         name="init",
         body=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=None)],
@@ -206,8 +203,7 @@ def test_check_does_not_leak_init_flag_between_sibling_methods():
 
 
 def test_check_allows_this_inside_function_nested_in_method():
-    # Class Robot { move() { Func helper() { print this; } } }
-    # 메서드 안에 있는 일반 함수(클로저)에서도 this는 여전히 유효해야 한다.
+    # Class Robot { move() { Func helper() { print this; } } }  -- 클로저에서도 this는 유효하다.
     helper = make_function(name="helper", body=[PrintStmt(expression=make_this())])
     method = make_function(name="move", body=[helper])
     cls = make_class(methods=[method])
@@ -217,9 +213,7 @@ def test_check_allows_this_inside_function_nested_in_method():
 
 
 def test_check_allows_return_value_in_function_nested_inside_init():
-    # Class Robot { init() { Func helper() { return 5; } } }
-    # helper는 init 자신이 아니라 init 안에 있는 별개의 함수이므로,
-    # helper의 값 반환은 "생성자에서 값 반환" 오류가 아니어야 한다.
+    # Class Robot { init() { Func helper() { return 5; } } }  -- helper는 init과 별개 함수다.
     helper = make_function(
         name="helper",
         body=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr(5))],
@@ -232,9 +226,7 @@ def test_check_allows_return_value_in_function_nested_inside_init():
 
 
 def test_check_does_not_crash_when_superclass_is_not_a_variable_expr():
-    # Class Robot : 10 { }  (부모 자리에 클래스 이름이 아닌 값이 와도 죽지 않아야 한다)
-    # "클래스가 아닌 대상 상속"은 런타임 오류라 Checker가 여기서 정적으로
-    # 자기 상속 오류를 잘못 내지도, 죽지도 않아야 한다.
+    # Class Robot : 10 { }  -- "클래스가 아닌 대상 상속"은 런타임 오류라 여기서 죽으면 안 된다.
     cls = make_class(name="Robot", superclass=LiteralExpr(10))
     checker = CheckerUnit([cls])
 
