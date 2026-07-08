@@ -1,5 +1,5 @@
 from assembler import Assembler
-from prompt_shell import Debugger
+from cli import Debugger
 
 
 def _statements(source):
