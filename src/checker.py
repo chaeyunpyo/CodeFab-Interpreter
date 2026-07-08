@@ -3,7 +3,7 @@
 import dataclasses
 
 from nodes.expr import Expr, VariableExpr
-from nodes.stmt import BlockStmt, ForStmt, IfStmt, VarDeclStmt
+from nodes.stmt import BlockStmt, ForStmt, FunctionStmt, IfStmt, ReturnStmt, VarDeclStmt
 from source_error import SourceError
 
 
@@ -54,8 +54,12 @@ class ScopeChecker:
         if initializer_uses_name:
             self._record_error("Can't read local variable in initializer.", name_token)
 
+        self.declare_name(name, name_token)
+
+    def declare_name(self, name, token):
+        """이 스코프에 이름 하나를 선언한다. 이미 있으면 중복 오류를 기록한다."""
         if name in self.declared_names:
-            self._record_error("Already a variable with this name in this scope.", name_token)
+            self._record_error("Already a variable with this name in this scope.", token)
         else:
             self.declared_names.append(name)
 
@@ -74,11 +78,14 @@ class CheckerUnit:
             BlockStmt: self._check_block_stmt,
             IfStmt: self._check_if_stmt,
             ForStmt: self._check_for_stmt,
+            FunctionStmt: self._check_function_stmt,
+            ReturnStmt: self._check_return_stmt,
         }
 
     def check(self):
         self.errors = []
         self.visited_blocks = set()
+        self.function_depth = 0
         self.check_block(self.statements)
         return self.errors
 
@@ -110,3 +117,20 @@ class CheckerUnit:
         if statement.initializer is not None:
             self.check_statement(statement.initializer, scope)
         self.check_statement(statement.body, scope)
+
+    def _check_function_stmt(self, statement, scope):
+        # 파라미터도 이 함수 스코프의 선언으로 취급한다.
+        function_scope = ScopeChecker(self.expr_name_finder, self.errors)
+        for param in statement.params:
+            function_scope.declare_name(param.lexeme, param)
+
+        self.function_depth += 1
+        try:
+            for body_statement in statement.body:
+                self.check_statement(body_statement, function_scope)
+        finally:
+            self.function_depth -= 1
+
+    def _check_return_stmt(self, statement, scope):
+        if self.function_depth == 0:
+            self.errors.append(CheckerError("Can't return from top-level code.", statement.keyword))
