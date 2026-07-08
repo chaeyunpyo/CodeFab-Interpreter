@@ -97,3 +97,17 @@ class ReturnStmt(Stmt):
 
     keyword: Token
     value: Optional[Expr] = None
+
+
+@dataclass
+class ClassStmt(Stmt):
+    """클래스 선언문. 예: Class SpeedRobot : Robot { ... } (요구사항_정리/class.md)
+
+    superclass는 부모 클래스 이름을 나타내는 Expr(보통 VariableExpr)이고,
+    상속이 없으면 None이다. methods는 클래스 본문의 메서드(생성자 init
+    포함) 목록으로, 전부 FunctionStmt로 표현한다.
+    """
+
+    name: Token
+    superclass: Optional[Expr] = None
+    methods: List[FunctionStmt] = field(default_factory=list)
