@@ -135,3 +135,4 @@ class ImportStmt(Stmt):
     keyword: Token
     path: Token
     alias: Token
+    line: int = field(default=1, kw_only=True, compare=False)
