@@ -14,7 +14,7 @@ from nodes import (
 )
 from nodes.token_type import TokenType
 from ._storage import Storage
-from ._function import Function
+from ._callable import LoxCallable
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
@@ -133,30 +133,17 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
 
 
 def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
-    # _stmt와의 순환 import를 피하기 위해 호출 시점에 지연 import한다.
-    from ._stmt import execute
-    from ._signals import ReturnSignal
-
+    # 호출 대상이 Function이든 이후 추가될 class의 생성자/메서드든, Callable
+    # 인터페이스(arity/call)만 보고 처리한다 (Command/Strategy 패턴).
     callee = evaluate(expr.callee, storage)
-    if not isinstance(callee, Function):
+    if not isinstance(callee, LoxCallable):
         raise NotCallableError(expr.paren)
 
     arguments = [evaluate(argument, storage) for argument in expr.arguments]
     if len(arguments) != callee.arity():
         raise ArityMismatchError(callee.arity(), len(arguments), expr.paren)
 
-    storage.push_call_frame()
-    try:
-        for param, argument in zip(callee.declaration.params, arguments):
-            storage.define(param.lexeme, argument)
-        try:
-            for body_stmt in callee.declaration.body:
-                execute(body_stmt, storage)
-        except ReturnSignal as signal:
-            return signal.value
-        return None
-    finally:
-        storage.pop_call_frame()
+    return callee.call(storage, arguments)
 
 
 _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {

@@ -16,6 +16,7 @@ from .errors import (
 )
 from ._storage import Storage
 from ._signals import ReturnSignal
+from ._callable import LoxCallable
 from ._function import Function
 from ._expr import evaluate, stringify
 from ._stmt import execute
@@ -28,6 +29,7 @@ __all__ = [
     "NotCallableError",
     "ArityMismatchError",
     "ReturnSignal",
+    "LoxCallable",
     "Function",
     "Storage",
     "evaluate",
