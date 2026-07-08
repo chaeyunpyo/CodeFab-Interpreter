@@ -13,7 +13,7 @@
 
 import dataclasses
 
-from executor import Storage, evaluate, execute
+from executor import ExecutionError, Storage, evaluate, execute
 from nodes.ast_node import AstNode
 from nodes.stmt import BlockStmt, ForStmt, IfStmt
 from nodes.tokens import Token
@@ -73,9 +73,9 @@ class Debugger:
     def continue_(self):
         """다음 breakpoint를 만날 때까지(또는 끝날 때까지) 실행한다."""
         while not self.finished:
-            self.step()
-            if self.finished or self.current_line in self.breakpoints:
+            if self.current_line in self.breakpoints:
                 return
+            self.step()
 
     def _advance(self):
         try:
@@ -86,6 +86,12 @@ class Debugger:
             self.current_line = None
             self._current_index = None
             return
+        except ExecutionError:
+            self.finished = True
+            self.current_stmt = None
+            self.current_line = None
+            self._current_index = None
+            raise
         self.current_stmt = stmt
         self.current_line = _find_line(stmt)
         self._current_index = index

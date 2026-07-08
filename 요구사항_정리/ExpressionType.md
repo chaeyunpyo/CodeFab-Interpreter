@@ -12,6 +12,10 @@
 | 호출    | `CallExpr`     | 함수 호출 표현식 (추가)            | `add(1, 2)`               |
 | 배열 읽기 | `IndexGetExpr` | 배열 인덱스 읽기 표현식 (추가)        | `arr[0]`                  |
 | 배열 쓰기 | `IndexSetExpr` | 배열 인덱스 쓰기 표현식 (추가)        | `arr[0] = 10`             |
+| 필드 읽기 | `FieldGetExpr` | 필드 읽기 표현식 (추가)            | `r.speed`                 |
+| 필드 쓰기 | `FieldSetExpr` | 필드 쓰기 표현식 (추가)            | `r.speed = 10`            |
+| this   | `ThisExpr`     | 메서드 내부 자기 인스턴스 참조 (추가)     | `this.speed`              |
+| super  | `SuperExpr`    | 부모 클래스 메서드 참조 (추가)        | `super.move`              |
 
 ## Expression 종류 요약
 
@@ -27,4 +31,8 @@
 | 호출    | 1개 |
 | 배열 읽기 | 1개 |
 | 배열 쓰기 | 1개 |
+| 필드 읽기 | 1개 |
+| 필드 쓰기 | 1개 |
+| this   | 1개 |
+| super  | 1개 |
 

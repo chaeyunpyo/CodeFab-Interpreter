@@ -56,3 +56,25 @@ class NotAnArrayError(ExecutionError):
 
 class InvalidArraySizeError(ExecutionError):
     """Array() 생성 시 크기가 숫자가 아니거나 유효하지 않을 때. 예: Array("hi")"""
+
+
+class NotAnInstanceError(ExecutionError):
+    """인스턴스가 아닌 값에 필드 접근(get/set)을 시도할 때. 예: var x = 10; x.field (요구사항_정리/class.md)"""
+
+    def __init__(self, token: Optional[Token] = None):
+        super().__init__("필드 접근은 인스턴스에만 사용할 수 있습니다.", token)
+
+
+class UndefinedPropertyError(ExecutionError):
+    """인스턴스에 존재하지 않는 필드/메서드를 읽으려 할 때. 예: print r.power; (요구사항_정리/class.md)"""
+
+    def __init__(self, name: str, token: Optional[Token] = None):
+        super().__init__(f"Undefined property '{name}'", token)
+        self.name = name
+
+
+class NotAClassError(ExecutionError):
+    """상속 대상(superclass 자리)의 값이 클래스가 아닐 때. 예: var x = 10; Class Robot : x { ... } (요구사항_정리/class.md)"""
+
+    def __init__(self, token: Optional[Token] = None):
+        super().__init__("클래스만 상속할 수 있습니다.", token)

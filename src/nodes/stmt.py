@@ -118,10 +118,11 @@ class ImportStmt(Stmt):
     """import문. 예: import "sum.txt" alias sum; (요구사항_정리/import.md)
 
     keyword는 오류 위치(줄 번호) 표시용 import 토큰, path는 파일 경로
-    자리의 Expr(문자열 리터럴만 허용, 보통 LiteralExpr), alias는 별칭
-    식별자 토큰이다.
+    문자열 리터럴 토큰(경로 자리에는 문자열 리터럴만 허용되므로 항상
+    STRING 토큰이고, path.literal이 실제 경로 문자열이다), alias는
+    불러온 내용을 참조할 별칭 식별자 토큰이다.
     """
 
     keyword: Token
-    path: Expr
+    path: Token
     alias: Token
