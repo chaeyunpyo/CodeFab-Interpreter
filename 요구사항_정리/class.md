@@ -84,8 +84,9 @@
 | 인스턴스가 아닌 대상의 필드 접근 | `NotAnInstanceError` |
 | 존재하지 않는 필드/메서드 접근·읽기 | `UndefinedPropertyError` |
 
-`instanceof` 연산자만 Node(`InstanceOfExpr`)만 있고 Assembler 파싱과
-Executor 평가가 아직 미착수 상태다.
+`instanceof` 연산자도 Assembler 파싱(`_expression_parser.py`의
+`_finish_instanceof`)이 추가되면서 Node/Executor 평가(`_evaluate_instanceof`)까지
+end-to-end로 완료됨.
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
