@@ -104,6 +104,8 @@ def run_debug(path: str) -> None:
     파일을 파싱한 뒤 정지시킨 상태로 시작하고, step/next/continue/break/watch/inspect
     명령을 받아가며 한 Stmt씩 실행 상태를 점검한다.
     """
+    print(f"[DEBUG] 소스코드 로딩: {path}")
+
     try:
         with open(path, encoding="utf-8") as f:
             source = f.read()
@@ -124,11 +126,11 @@ def run_debug(path: str) -> None:
             print(error)
         return
 
-    _debug_repl(Debugger(assembler.ast))
+    _debug_repl(Debugger(assembler.ast), source.splitlines())
 
 
-def _debug_repl(debugger: Debugger) -> None:
-    _print_debugger_status(debugger)
+def _debug_repl(debugger: Debugger, source_lines) -> None:
+    _print_debugger_status(debugger, source_lines)
     while True:
         try:
             command = input("(debug) ").strip()
@@ -139,65 +141,94 @@ def _debug_repl(debugger: Debugger) -> None:
         if command in ("exit", "quit"):
             return
 
-        _handle_debug_command(debugger, command)
+        _handle_debug_command(debugger, command, source_lines)
 
 
-def _handle_debug_command(debugger: Debugger, command: str) -> None:
+def _handle_debug_command(debugger: Debugger, command: str, source_lines) -> None:
     name, _, arg = command.partition(" ")
     arg = arg.strip()
 
     if name == "step":
         debugger.step()
-        _print_debugger_status(debugger)
+        _print_debugger_status(debugger, source_lines)
     elif name == "next":
         debugger.next()
-        _print_debugger_status(debugger)
+        _print_debugger_status(debugger, source_lines)
     elif name == "continue":
         debugger.continue_()
-        _print_debugger_status(debugger)
+        _print_debugger_status(debugger, source_lines)
     elif name == "break":
-        _with_line_number(arg, "break <줄번호>", debugger.add_breakpoint)
+        line = _parse_line_number(arg, "break <줄번호>")
+        if line is not None:
+            debugger.add_breakpoint(line)
+            print(f"[DEBUG] {line}번째 줄에 breakpoint 설정")
     elif name == "remove":
-        _with_line_number(arg, "remove <줄번호>", debugger.remove_breakpoint)
+        line = _parse_line_number(arg, "remove <줄번호>")
+        if line is not None:
+            debugger.remove_breakpoint(line)
+            print(f"[DEBUG] {line}번째 줄 breakpoint 해제")
     elif name == "breakpoints":
-        print(sorted(debugger.breakpoints))
+        print(f"[DEBUG] 현재 breakpoint: {sorted(debugger.breakpoints)}")
     elif name == "watch":
         debugger.watch(arg)
+        print(f"[DEBUG] '{arg}' 변수 감시 시작")
     elif name == "unwatch":
         debugger.unwatch(arg)
+        print(f"[DEBUG] '{arg}' 변수 감시 해제")
     elif name == "watches":
-        _print_variables(debugger.watched_values())
+        print("[DEBUG] 감시 중인 변수")
+        _print_watches(debugger)
     elif name == "inspect":
-        _print_variables(debugger.inspect())
+        print("[DEBUG] 현재 스코프 변수")
+        _print_inspect(debugger)
     else:
         print(f"알 수 없는 명령입니다: {command}")
 
 
-def _with_line_number(arg: str, usage: str, handler) -> None:
+def _parse_line_number(arg: str, usage: str):
     try:
-        line = int(arg)
+        return int(arg)
     except ValueError:
         print(f"사용법: {usage}")
-        return
-    handler(line)
+        return None
 
 
-def _print_debugger_status(debugger: Debugger) -> None:
+def _print_debugger_status(debugger: Debugger, source_lines) -> None:
     if debugger.finished:
-        print("(실행 종료)")
+        print("[DEBUG] 실행 종료")
     else:
-        print(f"-> Line {debugger.current_line}: {type(debugger.current_stmt).__name__}")
+        code = _source_line_text(source_lines, debugger.current_line)
+        print(f"[DEBUG] {debugger.current_line}번째 줄에서 정지 -> {code}")
 
     if debugger.watches:
-        _print_variables(debugger.watched_values())
+        _print_watches(debugger)
 
 
-def _print_variables(variables) -> None:
-    if not variables:
-        print("  (없음)")
-        return
-    for name, value in variables.items():
-        print(f"  {name} = {value}")
+def _source_line_text(source_lines, line_number) -> str:
+    if line_number is None or not (1 <= line_number <= len(source_lines)):
+        return "(알 수 없음)"
+    return source_lines[line_number - 1].strip()
+
+
+def _print_watches(debugger: Debugger) -> None:
+    for name, value in debugger.watched_values().items():
+        print(f"[WATCH] {name} = {value}")
+
+
+def _print_inspect(debugger: Debugger) -> None:
+    local_items, global_items = debugger.inspect()
+
+    if not local_items:
+        # 최상위(블록 밖)에서는 로컬 스코프가 곧 전역 스코프라, 중복 표시를 피하려고
+        # 항상 비워둔다. 이게 "버그처럼" 보이지 않도록 명시적으로 알려준다.
+        print("[로컬] (없음 - 현재 블록 스코프 안이 아님)")
+    for name, value in local_items.items():
+        print(f"[로컬] {name} = {value}")
+
+    if not global_items:
+        print("[전역] (없음)")
+    for name, value in global_items.items():
+        print(f"[전역] {name} = {value}")
 
 
 def main(args=None) -> None:

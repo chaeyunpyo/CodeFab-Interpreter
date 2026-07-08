@@ -44,11 +44,12 @@ class StatementParser:
 
     def var_declaration(self):
         """`var` IDENTIFIER `=` expression `;` 형태의 변수 선언을 파싱한다."""
+        line = self.tokens.previous().line  # 'var' 키워드
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected variable name")
         self.tokens.consume(TokenType.EQUAL, "Expected '=' after variable name")
         initializer = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
-        return VarDeclStmt(name=name, initializer=initializer)
+        return VarDeclStmt(name=name, initializer=initializer, line=line)
 
     # --- 문장 (statements) ---
 
@@ -61,6 +62,7 @@ class StatementParser:
 
     def for_statement(self):
         """`for` `(` initializer `;` condition `;` increment `)` body 형태의 for문을 파싱한다."""
+        line = self.tokens.previous().line  # 'for' 키워드
         self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'")
 
         if self.tokens.match(TokenType.SEMICOLON):
@@ -82,10 +84,13 @@ class StatementParser:
 
         body = self.statement()
 
-        return ForStmt(initializer=initializer, condition=condition, increment=increment, body=body)
+        return ForStmt(
+            initializer=initializer, condition=condition, increment=increment, body=body, line=line
+        )
 
     def if_statement(self):
         """`if` `(` condition `)` then_branch (`else` else_branch)? 형태의 if문을 파싱한다."""
+        line = self.tokens.previous().line  # 'if' 키워드
         self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'")
         condition = self.expressions.parse()
         self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after if condition")
@@ -95,22 +100,25 @@ class StatementParser:
         if self.tokens.match(TokenType.ELSE):
             else_branch = self.statement()
 
-        return IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch)
+        return IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch, line=line)
 
     def print_statement(self):
         """`print` expression `;` 형태의 print문을 파싱한다."""
+        line = self.tokens.previous().line  # 'print' 키워드
         value = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after value")
-        return PrintStmt(expression=value)
+        return PrintStmt(expression=value, line=line)
 
     def block_statement(self):
         """`{` 로 시작하는 블록 문장을 파싱한다."""
-        return BlockStmt(statements=self.block())
+        line = self.tokens.previous().line  # '{'
+        return BlockStmt(statements=self.block(), line=line)
 
     def function_statement(self):
         """`Func` IDENTIFIER `(` params? `)` `{` body `}` 형태의 함수 선언을 파싱한다.
         (요구사항_정리/function.md)
         """
+        line = self.tokens.previous().line  # 'Func' 키워드
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected function name")
         self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
 
@@ -124,7 +132,7 @@ class StatementParser:
         self.tokens.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
         body = self.block()
 
-        return FunctionStmt(name=name, params=params, body=body)
+        return FunctionStmt(name=name, params=params, body=body, line=line)
 
     def return_statement(self):
         """`return` expression? `;` 형태의 return문을 파싱한다. (요구사항_정리/function.md)
@@ -136,7 +144,7 @@ class StatementParser:
         if not self.tokens.check(TokenType.SEMICOLON):
             value = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after return value")
-        return ReturnStmt(keyword=keyword, value=value)
+        return ReturnStmt(keyword=keyword, value=value, line=keyword.line)
 
     def block(self):
         """`}` 나 파일 끝을 만날 때까지 한 줄씩 반복해서 읽어 문장 목록을 만든다."""
@@ -148,6 +156,7 @@ class StatementParser:
 
     def expression_statement(self):
         """expression `;` 형태의 표현식 문장을 파싱한다."""
+        line = self.tokens.current().line
         expr = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after expression")
-        return ExpressionStmt(expression=expr)
+        return ExpressionStmt(expression=expr, line=line)

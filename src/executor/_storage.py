@@ -12,6 +12,8 @@ Public API:
     storage.push_call_frame()    - 함수 호출 진입 (CallExpr 실행 시)
     storage.pop_call_frame()     - 함수 호출 종료 (CallExpr 실행 종료 시)
     storage.current_scope_items() - 현재(가장 안쪽) 스코프의 변수 목록 조회 (디버그 모드 inspect 용)
+    storage.global_scope_items() - 전역 스코프의 변수 목록 조회 (디버그 모드 inspect 용)
+    storage.scope_depth()        - 현재 스코프 체인의 깊이 (1이면 전역 스코프뿐)
 """
 
 from typing import Any, Dict, List
@@ -75,6 +77,20 @@ class Storage:
         디버그 모드의 inspect 명령용 (PDF: "현재 스코프의 모든 변수와 값 출력").
         """
         return dict(self._scopes[-1])
+
+    def global_scope_items(self) -> Dict[str, Any]:
+        """전역 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.
+
+        디버그 모드의 inspect 명령용 ([전역] 표시).
+        """
+        return dict(self._scopes[0])
+
+    def scope_depth(self) -> int:
+        """현재 스코프 체인의 깊이를 반환한다 (1이면 현재 스코프가 곧 전역 스코프).
+
+        디버그 모드의 inspect 명령이 로컬/전역을 구분할 때 사용한다.
+        """
+        return len(self._scopes)
 
     # ── 스코프 관리 ───────────────────────────────────────────────────────────
 
