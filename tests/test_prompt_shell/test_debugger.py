@@ -77,6 +77,19 @@ def test_continue_without_breakpoints_runs_to_completion():
     assert debugger.finished is True
 
 
+def test_continue_snaps_to_next_statement_when_breakpoint_line_has_no_statement():
+    # 2번째 줄은 주석이라 실행되는 문장이 없다. breakpoint가 정확히 그 줄과
+    # 같아지는 순간은 오지 않으므로, 그 줄을 지나치는 3번째 줄에서 멈춰야 한다.
+    source = "var a = 1;\n// 그냥 주석\nvar b = 2;\nvar c = 3;\n"
+    debugger = Debugger(_statements(source))
+    debugger.add_breakpoint(2)
+
+    debugger.continue_()
+
+    assert debugger.current_line == 3
+    assert debugger.storage.exists("b") is False  # 아직 실행 안 됨
+
+
 def test_remove_breakpoint_lets_continue_pass_through():
     source = "print 1;\nprint 2;\n"
     debugger = Debugger(_statements(source))
@@ -110,8 +123,23 @@ def test_unwatch_removes_variable_from_watch_list():
 
 
 def test_inspect_returns_all_variables_in_current_scope():
+    # 최상위(전역)에서 선언했으므로 local은 비고, global에 잡혀야 한다.
     debugger = Debugger(_statements("var a = 1;\nvar b = 2;\n"))
     debugger.step()
     debugger.step()
 
-    assert debugger.inspect() == {"a": 1.0, "b": 2.0}
+    local_items, global_items = debugger.inspect()
+    assert local_items == {}
+    assert global_items == {"a": 1.0, "b": 2.0}
+
+
+def test_inspect_distinguishes_local_from_global_scope():
+    # 블록이 var 2개를 가져야, 블록이 끝나며 스코프가 pop 되기 전에 안에서 멈출 수 있다.
+    source = "var ga = 3;\n{\n  var a = 1;\n  var b = 2;\n}\n"
+    debugger = Debugger(_statements(source))
+    debugger.step()  # var ga = 3; 실행 -> 전역에 ga 선언
+    debugger.step()  # 블록 진입, var a = 1; 실행 -> 로컬에 a 선언 (아직 블록 안)
+
+    local_items, global_items = debugger.inspect()
+    assert local_items == {"a": 1.0}
+    assert global_items == {"ga": 3.0}

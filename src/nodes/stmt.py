@@ -25,6 +25,7 @@ class ExpressionStmt(Stmt):
     """
 
     expression: Expr
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -32,6 +33,7 @@ class PrintStmt(Stmt):
     """값을 평가해서 출력하는 문장. 예: print a; (PDF p.52, p.77)"""
 
     expression: Expr
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -43,6 +45,7 @@ class VarDeclStmt(Stmt):
 
     name: Token
     initializer: Optional[Expr] = None
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -54,6 +57,7 @@ class BlockStmt(Stmt):
     """
 
     statements: List[Stmt] = field(default_factory=list)
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -65,6 +69,7 @@ class IfStmt(Stmt):
     condition: Expr
     then_branch: Stmt
     else_branch: Optional[Stmt] = None
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -77,6 +82,7 @@ class ForStmt(Stmt):
     condition: Optional[Expr]
     increment: Optional[Expr]
     body: Stmt
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -86,6 +92,7 @@ class FunctionStmt(Stmt):
     name: Token
     params: List[Token] = field(default_factory=list)
     body: List[Stmt] = field(default_factory=list)
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -97,6 +104,7 @@ class ReturnStmt(Stmt):
 
     keyword: Token
     value: Optional[Expr] = None
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -111,6 +119,7 @@ class ClassStmt(Stmt):
     name: Token
     superclass: Optional[Expr] = None
     methods: List[FunctionStmt] = field(default_factory=list)
+    line: int = field(default=1, kw_only=True, compare=False)
 
 
 @dataclass
@@ -126,3 +135,4 @@ class ImportStmt(Stmt):
     keyword: Token
     path: Token
     alias: Token
+    line: int = field(default=1, kw_only=True, compare=False)

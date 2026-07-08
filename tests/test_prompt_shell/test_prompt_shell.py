@@ -282,7 +282,9 @@ def test_step15_main_debug_command_enters_debug_repl(monkeypatch, tmp_path, caps
 
     main(["debug", str(script)])
 
-    assert "Line 1" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert f"[DEBUG] 소스코드 로딩: {script}" in out
+    assert "[DEBUG] 1번째 줄에서 정지 -> var a = 1;" in out
 
 
 def test_step15_main_unknown_command_shows_usage_without_crashing(capsys):
@@ -298,6 +300,22 @@ def test_step16_run_debug_reports_missing_file_without_crashing(capsys):
     run_debug("이런_파일은_없다.ez")
 
     assert capsys.readouterr().out != ""
+
+
+def test_step16_run_debug_runtime_error_during_step_does_not_crash_the_session(
+    monkeypatch, tmp_path, capsys
+):
+    """step 도중 런타임 오류(미정의 변수 등)가 나도 세션이 죽지 않고 메시지만 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\nprint notDefined;\nprint 3;\n", encoding="utf-8")
+    inputs = iter(["step", "step", "step", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))  # 예외가 여기서 그대로 튀어나오면 테스트 자체가 실패한다
+
+    out = capsys.readouterr().out
+    assert "Undefined variable" in out
+    assert "[DEBUG] 실행 종료" in out
 
 
 def test_step16_run_debug_step_executes_one_statement_at_a_time(monkeypatch, tmp_path, capsys):
@@ -324,7 +342,7 @@ def test_step16_run_debug_watch_prints_variable_value_after_each_step(monkeypatc
     run_debug(str(script))
 
     out = capsys.readouterr().out
-    assert "a = 2.0" in out
+    assert "[WATCH] a = 2.0" in out
 
 
 def test_step16_run_debug_break_and_continue_stops_at_breakpoint(monkeypatch, tmp_path, capsys):
@@ -340,7 +358,7 @@ def test_step16_run_debug_break_and_continue_stops_at_breakpoint(monkeypatch, tm
 
     out = capsys.readouterr().out
     assert out.count("1\n") == 1  # 2번째 줄까지만 실행되고 3번째 줄 직전에 멈췄다
-    assert "Line 3" in out
+    assert "[DEBUG] 3번째 줄에서 정지 -> print a;" in out
 
 
 def test_step16_run_debug_inspect_prints_current_scope_variables(monkeypatch, tmp_path, capsys):
@@ -353,5 +371,21 @@ def test_step16_run_debug_inspect_prints_current_scope_variables(monkeypatch, tm
     run_debug(str(script))
 
     out = capsys.readouterr().out
-    assert "a = 1.0" in out
-    assert "b = 2.0" in out
+    assert "[전역] a = 1.0" in out
+    assert "[전역] b = 2.0" in out
+    assert "[로컬] (없음 - 현재 블록 스코프 안이 아님)" in out  # 최상위라 로컬은 없다
+
+
+def test_step16_run_debug_inspect_shows_local_variables_inside_a_block(monkeypatch, tmp_path, capsys):
+    """블록 안에 멈춰 있을 때 inspect는 [로컬]에 블록 스코프 변수를 보여줘야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("var ga = 3;\n{\n  var a = 1;\n  var b = 2;\n}\n", encoding="utf-8")
+    inputs = iter(["step", "step", "inspect", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "[로컬] a = 1.0" in out
+    assert "[전역] ga = 3.0" in out
+    assert "[로컬] b" not in out  # b는 아직 선언 전

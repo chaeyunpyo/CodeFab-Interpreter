@@ -49,11 +49,12 @@ class StatementParser:
 
     def var_declaration(self):
         """`var` IDENTIFIER `=` expression `;` 형태의 변수 선언을 파싱한다."""
+        line = self.tokens.previous().line  # 'var' 키워드
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected variable name")
         self.tokens.consume(TokenType.EQUAL, "Expected '=' after variable name")
         initializer = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
-        return VarDeclStmt(name=name, initializer=initializer)
+        return VarDeclStmt(name=name, initializer=initializer, line=line)
 
     # --- 문장 (statements) ---
 
@@ -66,6 +67,7 @@ class StatementParser:
 
     def for_statement(self):
         """`for` `(` initializer `;` condition `;` increment `)` body 형태의 for문을 파싱한다."""
+        line = self.tokens.previous().line  # 'for' 키워드
         self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'")
 
         if self.tokens.match(TokenType.SEMICOLON):
@@ -87,10 +89,13 @@ class StatementParser:
 
         body = self.statement()
 
-        return ForStmt(initializer=initializer, condition=condition, increment=increment, body=body)
+        return ForStmt(
+            initializer=initializer, condition=condition, increment=increment, body=body, line=line
+        )
 
     def if_statement(self):
         """`if` `(` condition `)` then_branch (`else` else_branch)? 형태의 if문을 파싱한다."""
+        line = self.tokens.previous().line  # 'if' 키워드
         self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'")
         condition = self.expressions.parse()
         self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after if condition")
@@ -100,23 +105,39 @@ class StatementParser:
         if self.tokens.match(TokenType.ELSE):
             else_branch = self.statement()
 
-        return IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch)
+        return IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch, line=line)
 
     def print_statement(self):
         """`print` expression `;` 형태의 print문을 파싱한다."""
+        line = self.tokens.previous().line  # 'print' 키워드
         value = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after value")
-        return PrintStmt(expression=value)
+        return PrintStmt(expression=value, line=line)
 
     def block_statement(self):
         """`{` 로 시작하는 블록 문장을 파싱한다."""
-        return BlockStmt(statements=self.block())
+        line = self.tokens.previous().line  # '{'
+        return BlockStmt(statements=self.block(), line=line)
 
     def function_statement(self):
         """`Func` IDENTIFIER `(` params? `)` `{` body `}` 형태의 함수 선언을 파싱한다.
         (요구사항_정리/function.md)
         """
-        return self._finish_function("function")
+        line = self.tokens.previous().line  # 'Func' 키워드
+        name = self.tokens.consume(TokenType.IDENTIFIER, "Expected function name")
+        self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
+
+        params = []
+        if not self.tokens.check(TokenType.RIGHT_PAREN):
+            params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+            while self.tokens.match(TokenType.COMMA):
+                params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+        self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
+
+        self.tokens.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
+        body = self.block()
+
+        return FunctionStmt(name=name, params=params, body=body, line=line)
 
     def class_statement(self):
         """`Class` IDENTIFIER (`:` IDENTIFIER)? `{` method* `}` 형태의 클래스 선언을 파싱한다.
@@ -127,6 +148,7 @@ class StatementParser:
         (요구사항_정리/class.md의 "클래스가 아닌 대상 상속" 오류 참고),
         여기서는 이름만 참조로 남겨두고 값 확인은 Executor 몫으로 둔다.
         """
+        line = self.tokens.previous().line  # 'Class' 키워드
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected class name")
 
         superclass = None
@@ -140,7 +162,7 @@ class StatementParser:
             methods.append(self.method_declaration())
         self.tokens.consume(TokenType.RIGHT_BRACE, "Expected '}' after class body")
 
-        return ClassStmt(name=name, superclass=superclass, methods=methods)
+        return ClassStmt(name=name, superclass=superclass, methods=methods, line=line)
 
     def method_declaration(self):
         """Class 본문 안의 메서드(생성자 init 포함) 선언을 파싱한다. `Func` 키워드
@@ -155,6 +177,7 @@ class StatementParser:
         FunctionStmt를 만든다. kind는 문법 차이 없이 오류 메시지에만 쓰인다
         ("function" 또는 "method").
         """
+        line = self.tokens.current().line
         name = self.tokens.consume(TokenType.IDENTIFIER, f"Expected {kind} name")
         self.tokens.consume(TokenType.LEFT_PAREN, f"Expected '(' after {kind} name")
 
@@ -168,7 +191,7 @@ class StatementParser:
         self.tokens.consume(TokenType.LEFT_BRACE, f"Expected '{{' before {kind} body")
         body = self.block()
 
-        return FunctionStmt(name=name, params=params, body=body)
+        return FunctionStmt(name=name, params=params, body=body, line=line)
 
     def import_statement(self):
         """`import` STRING `alias` IDENTIFIER `;` 형태의 import문을 파싱한다.
@@ -196,7 +219,7 @@ class StatementParser:
         if not self.tokens.check(TokenType.SEMICOLON):
             value = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after return value")
-        return ReturnStmt(keyword=keyword, value=value)
+        return ReturnStmt(keyword=keyword, value=value, line=keyword.line)
 
     def block(self):
         """`}` 나 파일 끝을 만날 때까지 한 줄씩 반복해서 읽어 문장 목록을 만든다."""
@@ -208,6 +231,7 @@ class StatementParser:
 
     def expression_statement(self):
         """expression `;` 형태의 표현식 문장을 파싱한다."""
+        line = self.tokens.current().line
         expr = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after expression")
-        return ExpressionStmt(expression=expr)
+        return ExpressionStmt(expression=expr, line=line)

@@ -8,38 +8,15 @@
     remove_breakpoint(n) - breakpoint 해제
     watch(name)/unwatch(name) - 변수 감시 목록 추가/제거
     watched_values()   - 감시 중인 변수들의 현재 값 (변수 저장소에서 직접 조회)
-    inspect()          - 현재 스코프의 모든 변수와 값
+    inspect()          - (local_items, global_items) - 로컬/전역 스코프의 변수와 값
 """
 
 import dataclasses
 
-from executor import ExecutionError, Storage, evaluate, execute
+from executor import LoxCallable, ExecutionError, Storage, evaluate, execute
 from nodes.ast_node import AstNode
 from nodes.stmt import BlockStmt, ForStmt, IfStmt
 from nodes.tokens import Token
-
-
-def _find_line(node):
-    """Stmt/Expr 트리 안에서 처음 발견되는 Token의 line을 재귀적으로 찾는다.
-
-    Stmt 노드 자체는 line을 직접 들고 있지 않아서, 내부 필드를 훑어 Token을 찾는다.
-    """
-    if isinstance(node, Token):
-        return node.line
-    if isinstance(node, AstNode):
-        for field in dataclasses.fields(node):
-            line = _find_line(getattr(node, field.name))
-            if line is not None:
-                return line
-        return None
-    if isinstance(node, list):
-        for item in node:
-            line = _find_line(item)
-            if line is not None:
-                return line
-        return None
-    return None
-
 
 class Debugger:
     def __init__(self, statements):
@@ -71,11 +48,24 @@ class Debugger:
             self._advance()
 
     def continue_(self):
-        """다음 breakpoint를 만날 때까지(또는 끝날 때까지) 실행한다."""
+        """다음 breakpoint를 만날 때까지(또는 끝날 때까지) 실행한다.
+
+        breakpoint가 주석/빈 줄처럼 실행되는 문장이 없는 줄에 찍혀도, 그 줄을
+        지나치는 첫 문장에서 멈추도록 스냅한다 (정확히 그 줄이 실행되지 않아도 된다).
+        """
         while not self.finished:
-            if self.current_line in self.breakpoints:
-                return
+            previous_line = self.current_line
             self.step()
+            if self.finished or self._crosses_breakpoint(previous_line, self.current_line):
+                return
+
+    def _crosses_breakpoint(self, previous_line, current_line):
+        for breakpoint_line in self.breakpoints:
+            if current_line == breakpoint_line:
+                return True
+            if previous_line is not None and previous_line < breakpoint_line < current_line:
+                return True
+        return False
 
     def _advance(self):
         try:
@@ -93,7 +83,7 @@ class Debugger:
             self._current_index = None
             raise
         self.current_stmt = stmt
-        self.current_line = _find_line(stmt)
+        self.current_line = stmt.line
         self._current_index = index
 
     # ── breakpoints ──────────────────────────────────────────────────────
@@ -122,8 +112,21 @@ class Debugger:
         }
 
     def inspect(self):
-        """현재(가장 안쪽) 스코프의 모든 변수와 값을 반환한다."""
-        return self.storage.current_scope_items()
+        """(local_items, global_items)를 반환한다.
+
+        현재 스코프가 곧 전역 스코프이면(최상위) local_items는 비워서 중복 표시를
+        피한다. 내장 함수(Array 등 LoxCallable)는 사용자 변수가 아니므로 제외한다.
+        """
+        global_items = self._without_callables(self.storage.global_scope_items())
+        if self.storage.scope_depth() > 1:
+            local_items = self._without_callables(self.storage.current_scope_items())
+        else:
+            local_items = {}
+        return local_items, global_items
+
+    @staticmethod
+    def _without_callables(items):
+        return {name: value for name, value in items.items() if not isinstance(value, LoxCallable)}
 
     # ── AST 순회 (Stmt 단위로 yield) ─────────────────────────────────────
 
