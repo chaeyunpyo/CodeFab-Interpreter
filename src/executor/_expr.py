@@ -31,6 +31,10 @@ def _check_number_operands(left: Any, right: Any, token) -> None:
         raise TypeMismatchError("피연산자는 반드시 숫자여야 합니다.", token)
 
 
+def _is_string(value: Any) -> bool:
+    return isinstance(value, str)
+
+
 def _evaluate_literal(expr: LiteralExpr, storage: Storage) -> Any:
     return expr.value
 
@@ -109,6 +113,9 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
         if right == 0:
             raise DivideByZeroError("0으로 나눌 수 없습니다.", expr.operator)
         return left / right
+
+    if op == TokenType.PLUS and _is_string(left) and _is_string(right):
+        return left + right
 
     numeric_op = _NUMERIC_BINARY_OPS.get(op)
     if numeric_op is None:

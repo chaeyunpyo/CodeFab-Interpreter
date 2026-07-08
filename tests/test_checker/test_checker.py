@@ -65,7 +65,7 @@ def test_check_error_str_includes_line_number():
 
     errors = checker.check()
 
-    assert str(errors[0]) == "[Line 5] Already a variable with this name in this scope."
+    assert str(errors[0]) == "[Checker] Line 5: Already a variable with this name in this scope."
 
 
 # 변수 중복 선언 검사
