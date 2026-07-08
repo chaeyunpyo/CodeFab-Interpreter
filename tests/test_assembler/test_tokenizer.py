@@ -351,3 +351,131 @@ def test_step21_added_keywords(source, expected_type):
         Token(expected_type, source),
         Token(TokenType.EOF, ""),
     ]
+
+# --- 22단계: 추가 - 콤마 (함수 파라미터/인자 구분, function.md 참고) ---
+
+def test_step22_comma_token():
+    """Func add(a, b) { ... }, add(1, 2) 처럼 파라미터/인자를 구분하는 ',' 토큰."""
+    tokenizer = Tokenizer(",")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.COMMA, ","),
+        Token(TokenType.EOF, ""),
+    ]
+
+
+def test_step22_function_call_argument_list_tokenizes_with_commas():
+    """add(1, 2)처럼 콤마로 구분된 인자 목록이 올바르게 토큰화되어야 한다."""
+    tokenizer = Tokenizer("add(1, 2);")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.IDENTIFIER, "add"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.NUMBER, "1", literal=1.0),
+        Token(TokenType.COMMA, ","),
+        Token(TokenType.NUMBER, "2", literal=2.0),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 23단계: 추가 - 점/콜론 (필드·메서드 접근, 클래스 상속 선언, class.md 참고) ---
+
+def test_step23_dot_token():
+    """r.speed, this.position, super.move() 처럼 필드/메서드 접근에 쓰이는 '.' 토큰."""
+    tokenizer = Tokenizer(".")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.DOT, "."),
+        Token(TokenType.EOF, ""),
+    ]
+
+
+def test_step23_colon_token():
+    """Class SpeedRobot : Robot { ... } 처럼 상속 선언에 쓰이는 ':' 토큰."""
+    tokenizer = Tokenizer(":")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.COLON, ":"),
+        Token(TokenType.EOF, ""),
+    ]
+
+
+def test_step23_field_access_tokenizes_with_dot():
+    """r.speed = 10; 처럼 점으로 이어진 필드 접근이 올바르게 토큰화되어야 한다."""
+    tokenizer = Tokenizer("r.speed = 10;")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.IDENTIFIER, "r"),
+        Token(TokenType.DOT, "."),
+        Token(TokenType.IDENTIFIER, "speed"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "10", literal=10.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 24단계: 추가 - import 문법 (import.md 참고, 새 토큰 없이 기존 토큰만으로 구성됨) ---
+
+def test_step24_import_statement_tokenizes_with_existing_tokens():
+    """import "sum.txt" alias sum; 은 새 토큰 없이 IMPORT/STRING/ALIAS/IDENTIFIER/SEMICOLON
+    조합만으로 이미 올바르게 토큰화되어야 한다."""
+    tokenizer = Tokenizer('import "sum.txt" alias sum;')
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.IMPORT, "import"),
+        Token(TokenType.STRING, '"sum.txt"', literal="sum.txt"),
+        Token(TokenType.ALIAS, "alias"),
+        Token(TokenType.IDENTIFIER, "sum"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 25단계: 추가 - 정적 배열 문법 (정적배열.md 참고, 새 토큰 없이 기존 토큰만으로 구성됨) ---
+# 문서상 필요한 Token은 LEFT_BRACKET/RIGHT_BRACKET 2개뿐이며 이미 20단계에서 추가됨.
+# Array는 예약어가 아니라 IDENTIFIER를 함수처럼 호출하는 형태(Command Pattern)라 별도 토큰 불필요.
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        (
+            "var arr = Array(3);",
+            [
+                Token(TokenType.VAR, "var"),
+                Token(TokenType.IDENTIFIER, "arr"),
+                Token(TokenType.EQUAL, "="),
+                Token(TokenType.IDENTIFIER, "Array"),
+                Token(TokenType.LEFT_PAREN, "("),
+                Token(TokenType.NUMBER, "3", literal=3.0),
+                Token(TokenType.RIGHT_PAREN, ")"),
+                Token(TokenType.SEMICOLON, ";"),
+                Token(TokenType.EOF, ""),
+            ],
+        ),
+        (
+            "arr[0] = 10;",
+            [
+                Token(TokenType.IDENTIFIER, "arr"),
+                Token(TokenType.LEFT_BRACKET, "["),
+                Token(TokenType.NUMBER, "0", literal=0.0),
+                Token(TokenType.RIGHT_BRACKET, "]"),
+                Token(TokenType.EQUAL, "="),
+                Token(TokenType.NUMBER, "10", literal=10.0),
+                Token(TokenType.SEMICOLON, ";"),
+                Token(TokenType.EOF, ""),
+            ],
+        ),
+    ],
+)
+def test_step25_static_array_syntax_tokenizes_with_existing_tokens(source, expected):
+    """Array(n) 생성과 arr[i] 인덱스 읽기/쓰기가 기존 토큰 조합만으로 올바르게 토큰화되어야 한다."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == expected
