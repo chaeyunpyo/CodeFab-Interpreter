@@ -3,11 +3,15 @@ from nodes import (
     AssignExpr,
     BinaryExpr,
     CallExpr,
+    FieldGetExpr,
+    FieldSetExpr,
     GroupingExpr,
     IndexGetExpr,
     IndexSetExpr,
     LiteralExpr,
     LogicalExpr,
+    SuperExpr,
+    ThisExpr,
     UnaryExpr,
     VariableExpr,
 )
@@ -73,6 +77,8 @@ class ExpressionParser:
             return AssignExpr(name=expr.name, value=value)
         if isinstance(expr, IndexGetExpr):
             return IndexSetExpr(object=expr.object, bracket=expr.bracket, index=expr.index, value=value)
+        if isinstance(expr, FieldGetExpr):
+            return FieldSetExpr(object=expr.object, name=expr.name, value=value)
         raise InvalidAssignmentTargetError("Invalid assignment target", self.tokens.previous())
 
     def unary(self):
@@ -83,8 +89,9 @@ class ExpressionParser:
         return self.call()
 
     def call(self):
-        """primary 뒤에 `(`/`[`가 반복해서 나오는 동안 함수 호출/인덱스 접근으로 묶는다.
-        예: add(1, 2), get_fn()() (요구사항_정리/function.md), arr[0], arr[i][j] (요구사항_정리/정적배열.md)
+        """primary 뒤에 `(`/`[`/`.`가 반복해서 나오는 동안 함수 호출/인덱스 접근/필드 읽기로 묶는다.
+        예: add(1, 2), get_fn()() (요구사항_정리/function.md), arr[0], arr[i][j]
+        (요구사항_정리/정적배열.md), r.speed, r.move(5), r.move(5).report() (요구사항_정리/class.md)
         """
         expr = self.primary()
         while True:
@@ -96,6 +103,9 @@ class ExpressionParser:
                 index = self.parse()
                 self.tokens.consume(TokenType.RIGHT_BRACKET, "Expected ']' after index")
                 expr = IndexGetExpr(object=expr, bracket=bracket, index=index)
+            elif self.tokens.match(TokenType.DOT):
+                name = self.tokens.consume(TokenType.IDENTIFIER, "Expected property name after '.'")
+                expr = FieldGetExpr(object=expr, name=name)
             else:
                 break
         return expr
@@ -113,6 +123,15 @@ class ExpressionParser:
         if self.tokens.match(*self._LITERAL_FACTORIES):
             token = self.tokens.previous()
             return self._LITERAL_FACTORIES[token.type](token)
+
+        if self.tokens.match(TokenType.THIS):
+            return ThisExpr(keyword=self.tokens.previous())
+
+        if self.tokens.match(TokenType.SUPER):
+            keyword = self.tokens.previous()
+            self.tokens.consume(TokenType.DOT, "Expected '.' after 'super'")
+            method = self.tokens.consume(TokenType.IDENTIFIER, "Expected superclass method name")
+            return SuperExpr(keyword=keyword, method=method)
 
         if self.tokens.match(TokenType.IDENTIFIER):
             return VariableExpr(self.tokens.previous())
