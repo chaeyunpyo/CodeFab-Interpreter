@@ -6,11 +6,15 @@ from nodes import (
     BinaryExpr,
     CallExpr,
     Expr,
+    FieldGetExpr,
+    FieldSetExpr,
     GroupingExpr,
     IndexGetExpr,
     IndexSetExpr,
     LiteralExpr,
     LogicalExpr,
+    SuperExpr,
+    ThisExpr,
     UnaryExpr,
     VariableExpr,
 )
@@ -18,14 +22,17 @@ from nodes.token_type import TokenType
 from ._storage import Storage
 from ._callable import LoxCallable
 from ._array import FabArray, _parse_integer_value
+from ._class import LoxInstance
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
     IndexOutOfRangeError,
     InvalidIndexTypeError,
     NotAnArrayError,
+    NotAnInstanceError,
     NotCallableError,
     TypeMismatchError,
+    UndefinedPropertyError,
     UndefinedVariableError,
 )
 
@@ -157,6 +164,49 @@ def _check_integer_index(value: Any, token) -> int:
     return _parse_integer_value(value, "인덱스", InvalidIndexTypeError, token)
 
 
+def _evaluate_this(expr: ThisExpr, storage: Storage) -> Any:
+    try:
+        return storage.get("this")
+    except UndefinedVariableError as e:
+        e.token = expr.keyword
+        raise
+
+
+def _evaluate_field_get(expr: FieldGetExpr, storage: Storage) -> Any:
+    obj = evaluate(expr.object, storage)
+    if not isinstance(obj, LoxInstance):
+        raise NotAnInstanceError(expr.name)
+    return obj.get(expr.name)
+
+
+def _evaluate_field_set(expr: FieldSetExpr, storage: Storage) -> Any:
+    obj = evaluate(expr.object, storage)
+    if not isinstance(obj, LoxInstance):
+        raise NotAnInstanceError(expr.name)
+    value = evaluate(expr.value, storage)
+    obj.set(expr.name, value)
+    return value
+
+
+def _evaluate_super(expr: SuperExpr, storage: Storage) -> Any:
+    # __class__는 Function.call()이 메서드 호출 시 심어주는 owner_class다.
+    # 다단계 상속에서도 정의된 클래스 기준으로 부모를 찾아야 하므로
+    # 인스턴스 런타임 타입이 아니라 __class__.superclass를 기준으로 한다.
+    try:
+        owner_class = storage.get("__class__")
+    except UndefinedVariableError as e:
+        e.token = expr.keyword
+        raise
+    this = storage.get("this")
+    superclass = owner_class.superclass
+    if superclass is None:
+        raise UndefinedPropertyError(expr.method.lexeme, expr.keyword)
+    method = superclass.find_method(expr.method.lexeme)
+    if method is None:
+        raise UndefinedPropertyError(expr.method.lexeme, expr.method)
+    return method.bind(this)
+
+
 def _resolve_array_access(obj: Any, idx_val: Any, bracket) -> tuple:
     """배열 타입·인덱스 타입·범위를 한 번에 검사하고 (FabArray, int)를 반환한다."""
     if not isinstance(obj, FabArray):
@@ -200,6 +250,10 @@ _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     LogicalExpr: _evaluate_logical,
     BinaryExpr: _evaluate_binary,
     CallExpr: _evaluate_call,
+    ThisExpr: _evaluate_this,
+    FieldGetExpr: _evaluate_field_get,
+    FieldSetExpr: _evaluate_field_set,
+    SuperExpr: _evaluate_super,
     IndexGetExpr: _evaluate_index_get,
     IndexSetExpr: _evaluate_index_set,
 }
