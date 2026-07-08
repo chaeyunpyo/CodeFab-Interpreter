@@ -10,6 +10,8 @@ class Tokenizer:
         ")": TokenType.RIGHT_PAREN,
         "{": TokenType.LEFT_BRACE,
         "}": TokenType.RIGHT_BRACE,
+        "[": TokenType.LEFT_BRACKET,
+        "]": TokenType.RIGHT_BRACKET,
         "+": TokenType.PLUS,
         "-": TokenType.MINUS,
         "*": TokenType.STAR,
@@ -40,6 +42,14 @@ class Tokenizer:
         "false": TokenType.FALSE,
         "and": TokenType.AND,
         "or": TokenType.OR,
+        "Func": TokenType.FUNC,
+        "Class": TokenType.CLASS,
+        "return": TokenType.RETURN,
+        "This": TokenType.THIS,
+        "Super": TokenType.SUPER,
+        "instanceof": TokenType.INSTANCEOF,
+        "import": TokenType.IMPORT,
+        "alias": TokenType.ALIAS,
     }
 
     def __init__(self, source: str):

@@ -7,6 +7,8 @@ class TokenType(Enum):
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()
     RIGHT_BRACE = auto()
+    LEFT_BRACKET = auto()
+    RIGHT_BRACKET = auto()
     SEMICOLON = auto()
 
     # 산술 연산자 (PDF p.27)
@@ -44,6 +46,16 @@ class TokenType(Enum):
     AND = auto()
     OR = auto()
     PRINT = auto()
+
+    # 추가 - 함수/클래스/import
+    FUNC = auto()
+    CLASS = auto()
+    RETURN = auto()
+    THIS = auto()
+    SUPER = auto()
+    INSTANCEOF = auto()
+    IMPORT = auto()
+    ALIAS = auto()
 
     # 토큰 스트림 끝 (PDF p.28)
     EOF = auto()
