@@ -1,8 +1,17 @@
 """배열 런타임 객체와 빌트인 Array 함수."""
 
-from typing import Any, List
+from typing import Any, List, Type
 
 from ._callable import LoxCallable
+
+
+def _parse_integer_value(value: Any, label: str, error_cls: Type[Exception], token: Any) -> int:
+    """bool이 아닌 정수 숫자인지 검사하고 int로 변환한다. 타입 오류 시 error_cls를 발생시킨다."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise error_cls(f"{label}는 숫자여야 합니다. (받은 값: {value!r})", token)
+    if isinstance(value, float) and not value.is_integer():
+        raise error_cls(f"{label}는 정수여야 합니다. (받은 값: {value})", token)
+    return int(value)
 
 
 class FabArray:
@@ -40,16 +49,7 @@ class ArrayBuiltin(LoxCallable):
         from .errors import InvalidArraySizeError
 
         size_val = arguments[0]
-        # bool은 int 서브클래스이므로 숫자 검사 전에 따로 걸러낸다.
-        if isinstance(size_val, bool) or not isinstance(size_val, (int, float)):
-            raise InvalidArraySizeError(
-                f"배열 크기는 숫자여야 합니다. (받은 값: {size_val!r})"
-            )
-        if isinstance(size_val, float) and not size_val.is_integer():
-            raise InvalidArraySizeError(
-                f"배열 크기는 정수여야 합니다. (받은 값: {size_val})"
-            )
-        size = int(size_val)
+        size = _parse_integer_value(size_val, "배열 크기", InvalidArraySizeError, None)
         if size < 0:
             raise InvalidArraySizeError(
                 f"배열 크기는 0 이상이어야 합니다. (받은 값: {size})"
