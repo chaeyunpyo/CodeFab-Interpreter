@@ -131,6 +131,7 @@ class FieldSetExpr(Expr):
     value: Expr
 
 
+@dataclass
 class IndexGetExpr(Expr):
     """배열 인덱스 읽기 표현식. 예: arr[0] (요구사항_정리/정적배열.md)
 
