@@ -23,6 +23,7 @@ from .stmt import (
     ForStmt,
     FunctionStmt,
     IfStmt,
+    ImportStmt,
     PrintStmt,
     ReturnStmt,
     Stmt,
@@ -55,4 +56,5 @@ __all__ = [
     "FunctionStmt",
     "ReturnStmt",
     "ClassStmt",
+    "ImportStmt",
 ]
