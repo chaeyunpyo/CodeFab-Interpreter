@@ -4,12 +4,16 @@ from nodes import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
+    FunctionStmt,
     IfStmt,
     PrintStmt,
+    ReturnStmt,
     Stmt,
     VarDeclStmt,
 )
 from ._storage import Storage
+from ._signals import ReturnSignal
+from ._function import Function
 
 from ._expr import evaluate, stringify
 
@@ -58,6 +62,17 @@ def _execute_for_stmt(stmt: ForStmt, storage: Storage) -> None:
             evaluate(stmt.increment, storage)
 
 
+def _execute_return_stmt(stmt: ReturnStmt, storage: Storage) -> None:
+    # value가 없으면 null 반환. CallExpr가 이 시그널을
+    # 잡아 반환값으로 사용하므로, 여기서는 값만 평가해 실어 던진다.
+    value = evaluate(stmt.value, storage) if stmt.value is not None else None
+    raise ReturnSignal(value)
+
+
+def _execute_function_stmt(stmt: FunctionStmt, storage: Storage) -> None:
+    storage.define(stmt.name.lexeme, Function(stmt))
+
+
 _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ExpressionStmt: _execute_expression_stmt,
     PrintStmt: _execute_print_stmt,
@@ -65,6 +80,8 @@ _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     BlockStmt: _execute_block_stmt,
     IfStmt: _execute_if_stmt,
     ForStmt: _execute_for_stmt,
+    ReturnStmt: _execute_return_stmt,
+    FunctionStmt: _execute_function_stmt,
 }
 
 
