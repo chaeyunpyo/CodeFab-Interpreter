@@ -16,6 +16,7 @@
 | 필드 쓰기 | `FieldSetExpr` | 필드 쓰기 표현식 (추가)            | `r.speed = 10`            |
 | this   | `ThisExpr`     | 메서드 내부 자기 인스턴스 참조 (추가)     | `this.speed`              |
 | super  | `SuperExpr`    | 부모 클래스 메서드 참조 (추가)        | `super.move`              |
+| instanceof | `InstanceOfExpr` | 인스턴스가 특정 클래스(또는 조상)인지 확인 (추가) | `w instanceof Robot`      |
 
 ## Expression 종류 요약
 
@@ -35,4 +36,5 @@
 | 필드 쓰기 | 1개 |
 | this   | 1개 |
 | super  | 1개 |
+| instanceof | 1개 |
 
