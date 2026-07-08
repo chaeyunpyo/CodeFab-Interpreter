@@ -1,5 +1,13 @@
 # [추가] import 구현 항목
 
+## Node 정의
+
+기존 `nodes/stmt.py`에 아래 타입을 추가한다.
+
+| 클래스 | 필드 | 설명 | 예시 |
+| --- | --- | --- | --- |
+| `ImportStmt` | `keyword: Token`, `path: Token`, `alias: Token` | import문. path는 경로 자리에 항상 문자열 리터럴만 허용되므로 STRING 토큰이고, path.literal이 실제 경로 문자열 | `import "sum.txt" alias sum;` |
+
 ## 구현해야 할 기능
 
 | 분류 | 항목 | 설명 | 예시 |
@@ -29,6 +37,22 @@
 | 정적 오류 | 순환 import |
 | 정적 오류 | alias name 충돌 |
 | 정적 오류 | 반복문 내 import문 호출 |
+
+## 구현 현황 (Checker)
+
+정적 오류 6개 중 Checker 담당 3개는 `src/checker.py`에 구현 완료됨
+(테스트: `tests/test_checker/test_checker_import.py`). 나머지 3개(import
+문법 오류, 파일 없음, 순환 import)는 Assembler 담당이라 여기 포함하지
+않는다.
+
+| 항목 | 구현된 메시지 |
+| --- | --- |
+| 같은 scope 내 중복 import | `Already imported this file in this scope.` |
+| alias name 충돌 | `Already a variable with this name in this scope.` |
+| 반복문 내 import문 호출 | `Can't use import statement inside a loop.` |
+
+Node 정의(`ImportStmt`)는 추가됐지만, 실제 파일 읽기·조립·alias 접근
+실행은 Assembler/Executor 쪽 구현이 필요해서 아직 미착수 상태다.
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
