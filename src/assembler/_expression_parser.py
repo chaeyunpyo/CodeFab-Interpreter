@@ -8,6 +8,7 @@ from nodes import (
     GroupingExpr,
     IndexGetExpr,
     IndexSetExpr,
+    InstanceOfExpr,
     LiteralExpr,
     LogicalExpr,
     SuperExpr,
@@ -35,6 +36,13 @@ class ExpressionParser:
     표현해, 함수 호출/배열/필드 접근처럼 서로 다른 팀원이 손대는 문법이
     늘어나도 표에 한 줄만 추가하면 되게 한다(Strategy 패턴을 dict 기반
     조회로 적용한 것과 같다).
+
+    _climb()의 비교 단계 연산자는 거의 다 "우변도 다음 단계를 다시 climb한
+    표현식"이라는 동일한 모양이지만, `instanceof`(요구사항_정리/class.md)만
+    우변이 클래스 이름 하나라 모양이 다르다. 그 예외 하나를 위해 _climb() 전체를
+    복잡하게 만드는 대신, _infix_factories 표에 `instanceof` 전용 조립 방법만
+    등록해두고 _climb()은 "표에 있으면 그걸로, 없으면 기본 방식(node_cls)으로"만
+    분기한다.
     """
 
     # (표현식 클래스, 그 단계의 연산자들). 앞쪽일수록 우선순위가 낮다(더 늦게 묶인다).
@@ -52,6 +60,7 @@ class ExpressionParser:
                 TokenType.LESS_EQUAL,
                 TokenType.EQUAL_LESS,
                 TokenType.EQUAL_GREATER,
+                TokenType.INSTANCEOF,
             ),
         ),
         (BinaryExpr, (TokenType.PLUS, TokenType.MINUS)),
@@ -86,6 +95,12 @@ class ExpressionParser:
             TokenType.LEFT_PAREN: self._finish_call,
             TokenType.LEFT_BRACKET: self._finish_index,
             TokenType.DOT: self._finish_field_get,
+        }
+        # _climb()에서 우변이 "다음 단계를 climb한 표현식"이 아니라 특수한
+        # 모양인 연산자 토큰 -> 그 연산자를 마저 파싱하는 메서드. 표에 없는
+        # 연산자는 _climb()의 기본 방식(node_cls(left, operator, right))을 쓴다.
+        self._infix_factories = {
+            TokenType.INSTANCEOF: self._finish_instanceof,
         }
 
     def parse(self):
@@ -151,6 +166,16 @@ class ExpressionParser:
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected property name after '.'")
         return FieldGetExpr(object=object_, name=name)
 
+    def _finish_instanceof(self, object_, keyword):
+        """`instanceof` 뒤의 클래스 이름을 파싱한다. 예: w instanceof Robot
+        (요구사항_정리/class.md)
+
+        클래스 이름 자리는 다른 비교 연산자의 우변과 달리 climb된 표현식이
+        아니라 단일 IDENTIFIER이므로 VariableExpr로 감싼다.
+        """
+        class_name = VariableExpr(self.tokens.consume(TokenType.IDENTIFIER, "Expected class name after 'instanceof'"))
+        return InstanceOfExpr(object=object_, keyword=keyword, class_name=class_name)
+
     def primary(self):
         if self.tokens.match(*self._LITERAL_FACTORIES):
             token = self.tokens.previous()
@@ -190,6 +215,10 @@ class ExpressionParser:
         expr = self._climb(level + 1)
         while self.tokens.match(*operators):
             operator = self.tokens.previous()
+            finish = self._infix_factories.get(operator.type)
+            if finish is not None:
+                expr = finish(expr, operator)
+                continue
             right = self._climb(level + 1)
             expr = node_cls(left=expr, operator=operator, right=right)
         return expr
