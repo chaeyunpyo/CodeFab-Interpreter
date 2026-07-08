@@ -1,12 +1,33 @@
 from checker import CheckerUnit
 from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
-from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, VarDeclStmt
+from nodes.stmt import (
+    BlockStmt,
+    ExpressionStmt,
+    ForStmt,
+    FunctionStmt,
+    IfStmt,
+    PrintStmt,
+    ReturnStmt,
+    VarDeclStmt,
+)
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
 
 def make_var_decl(name: str = "a", initializer=None) -> VarDeclStmt:
     return VarDeclStmt(name=Token(TokenType.IDENTIFIER, name), initializer=initializer)
+
+
+def make_function(name="foo", params=None, body=None):
+    return FunctionStmt(
+        name=Token(TokenType.IDENTIFIER, name),
+        params=params if params is not None else [],
+        body=body if body is not None else [],
+    )
+
+
+def make_param(name):
+    return Token(TokenType.IDENTIFIER, name)
 
 
 def test_stores_empty_statements():
@@ -261,3 +282,88 @@ def test_check_detects_duplicate_declaration_when_if_then_and_else_are_bare_stat
 
     assert len(errors) == 1
     assert errors[0].message == "Already a variable with this name in this scope."
+
+
+# function 오류 검사 (요구사항_정리/function.md)
+# 아직 checker.py에 FunctionStmt/ReturnStmt 핸들러가 없어서 지금은 전부
+# RED(실패) 상태다. 구현하면 통과하도록 먼저 테스트만 작성해둔다.
+
+
+def test_check_allows_function_with_no_duplicate_params():
+    # Func foo(a, b) { }
+    fn = make_function(params=[make_param("a"), make_param("b")])
+    checker = CheckerUnit([fn])
+
+    assert checker.check() == []
+
+
+def test_check_detects_duplicate_parameter_names():
+    # Func foo(a, a) { }
+    fn = make_function(params=[make_param("a"), make_param("a")])
+    checker = CheckerUnit([fn])
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_duplicate_parameter_names_among_three():
+    # Func foo(a, b, a) { }
+    fn = make_function(params=[make_param("a"), make_param("b"), make_param("a")])
+    checker = CheckerUnit([fn])
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_allows_return_inside_function():
+    # Func foo() { return 5; }
+    fn = make_function(body=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr(5))])
+    checker = CheckerUnit([fn])
+
+    assert checker.check() == []
+
+
+def test_check_allows_return_with_no_value_inside_function():
+    # Func foo() { return; }
+    fn = make_function(body=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=None)])
+    checker = CheckerUnit([fn])
+
+    assert checker.check() == []
+
+
+def test_check_allows_return_inside_nested_block_of_function():
+    # Func foo() { { return 5; } }
+    fn = make_function(
+        body=[BlockStmt(statements=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr(5))])]
+    )
+    checker = CheckerUnit([fn])
+
+    assert checker.check() == []
+
+
+def test_check_detects_return_outside_function_at_top_level():
+    # return 5;
+    statements = [ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr(5))]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't return from top-level code."
+
+
+def test_check_detects_return_outside_function_inside_plain_block():
+    # { return 5; }  (함수가 아닌 블록 안)
+    statements = [
+        BlockStmt(statements=[ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr(5))]),
+    ]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't return from top-level code."
