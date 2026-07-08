@@ -13,7 +13,7 @@
 
 import dataclasses
 
-from executor import Storage, evaluate, execute
+from executor import ExecutionError, Storage, evaluate, execute
 from nodes.ast_node import AstNode
 from nodes.stmt import BlockStmt, ForStmt, IfStmt
 from nodes.tokens import Token
@@ -86,6 +86,12 @@ class Debugger:
             self.current_line = None
             self._current_index = None
             return
+        except ExecutionError:
+            self.finished = True
+            self.current_stmt = None
+            self.current_line = None
+            self._current_index = None
+            raise
         self.current_stmt = stmt
         self.current_line = _find_line(stmt)
         self._current_index = index
