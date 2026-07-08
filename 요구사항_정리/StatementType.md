@@ -8,6 +8,8 @@
 | 블록    | `BlockStmt`      | 여러 Statement를 하나의 지역 스코프로 묶는 문장 | `{ print a; var b = 1; }`                    |
 | 조건문   | `IfStmt`         | 조건에 따라 실행을 분기하는 문장              | `if (a > 0) { ... } else { ... }`            |
 | 반복문   | `ForStmt`        | 초기식 조건식 증감식을 이용한 반복 실행 문장       | `for (var i = 0; i < 10; i = i + 1) { ... }` |
+| 함수 선언 | `FunctionStmt`   | 이름/파라미터/본문을 갖는 함수 선언 (추가)      | `Func add(a, b) { ... }`                     |
+| return문 | `ReturnStmt`     | 함수 반환. 값이 없으면 null 반환 (추가)      | `return;` / `return a + b;`                  |
 
 ## Statement 종류 요약
 
@@ -19,4 +21,6 @@
 | 블록    | 1개 |
 | 조건문   | 1개 |
 | 반복문   | 1개 |
+| 함수 선언 | 1개 |
+| return문 | 1개 |
 

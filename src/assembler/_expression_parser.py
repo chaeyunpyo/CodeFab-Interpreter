@@ -2,6 +2,7 @@ from nodes.token_type import TokenType
 from nodes import (
     AssignExpr,
     BinaryExpr,
+    CallExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
@@ -75,7 +76,26 @@ class ExpressionParser:
             operator = self.tokens.previous()
             right = self.unary()
             return UnaryExpr(operator=operator, right=right)
-        return self.primary()
+        return self.call()
+
+    def call(self):
+        """primary 뒤에 `(`가 반복해서 나오는 동안 함수 호출로 묶는다.
+        예: add(1, 2), get_fn()() (요구사항_정리/function.md)
+        """
+        expr = self.primary()
+        while self.tokens.match(TokenType.LEFT_PAREN):
+            paren = self.tokens.previous()
+            expr = self._finish_call(expr, paren)
+        return expr
+
+    def _finish_call(self, callee, paren):
+        arguments = []
+        if not self.tokens.check(TokenType.RIGHT_PAREN):
+            arguments.append(self.parse())
+            while self.tokens.match(TokenType.COMMA):
+                arguments.append(self.parse())
+        self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments")
+        return CallExpr(callee=callee, paren=paren, arguments=arguments)
 
     def primary(self):
         if self.tokens.match(*self._LITERAL_FACTORIES):
