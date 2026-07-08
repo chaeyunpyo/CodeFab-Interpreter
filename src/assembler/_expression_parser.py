@@ -4,6 +4,8 @@ from nodes import (
     BinaryExpr,
     CallExpr,
     GroupingExpr,
+    IndexGetExpr,
+    IndexSetExpr,
     LiteralExpr,
     LogicalExpr,
     UnaryExpr,
@@ -66,10 +68,12 @@ class ExpressionParser:
         if not self.tokens.match(TokenType.EQUAL):
             return expr
 
-        if not isinstance(expr, VariableExpr):
-            raise InvalidAssignmentTargetError("Invalid assignment target", self.tokens.previous())
         value = self.assignment()
-        return AssignExpr(name=expr.name, value=value)
+        if isinstance(expr, VariableExpr):
+            return AssignExpr(name=expr.name, value=value)
+        if isinstance(expr, IndexGetExpr):
+            return IndexSetExpr(object=expr.object, bracket=expr.bracket, index=expr.index, value=value)
+        raise InvalidAssignmentTargetError("Invalid assignment target", self.tokens.previous())
 
     def unary(self):
         if self.tokens.match(*self._UNARY_OPERATORS):
@@ -79,13 +83,21 @@ class ExpressionParser:
         return self.call()
 
     def call(self):
-        """primary 뒤에 `(`가 반복해서 나오는 동안 함수 호출로 묶는다.
-        예: add(1, 2), get_fn()() (요구사항_정리/function.md)
+        """primary 뒤에 `(`/`[`가 반복해서 나오는 동안 함수 호출/인덱스 접근으로 묶는다.
+        예: add(1, 2), get_fn()() (요구사항_정리/function.md), arr[0], arr[i][j] (요구사항_정리/정적배열.md)
         """
         expr = self.primary()
-        while self.tokens.match(TokenType.LEFT_PAREN):
-            paren = self.tokens.previous()
-            expr = self._finish_call(expr, paren)
+        while True:
+            if self.tokens.match(TokenType.LEFT_PAREN):
+                paren = self.tokens.previous()
+                expr = self._finish_call(expr, paren)
+            elif self.tokens.match(TokenType.LEFT_BRACKET):
+                bracket = self.tokens.previous()
+                index = self.parse()
+                self.tokens.consume(TokenType.RIGHT_BRACKET, "Expected ']' after index")
+                expr = IndexGetExpr(object=expr, bracket=bracket, index=index)
+            else:
+                break
         return expr
 
     def _finish_call(self, callee, paren):
