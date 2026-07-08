@@ -109,6 +109,22 @@ class SuperExpr(Expr):
 
 
 @dataclass
+class InstanceOfExpr(Expr):
+    """instanceof 연산자. 예: w instanceof Robot (요구사항_정리/class.md)
+
+    object는 검사 대상 인스턴스 Expr, keyword는 오류 위치(줄 번호)
+    표시용 instanceof 토큰, class_name은 비교 대상 클래스 이름을
+    나타내는 Expr(보통 VariableExpr)이다. ClassStmt.superclass와 같은
+    이유로 실제 클래스 여부는 런타임에만 확정되므로, 여기서는 이름
+    참조만 담고 판정은 Executor 몫으로 둔다.
+    """
+
+    object: Expr
+    keyword: Token
+    class_name: Expr
+
+
+@dataclass
 class FieldGetExpr(Expr):
     """필드 읽기 표현식. 예: r.speed (요구사항_정리/class.md)
 
