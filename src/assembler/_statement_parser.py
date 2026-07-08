@@ -6,6 +6,7 @@ from nodes import (
     ForStmt,
     FunctionStmt,
     IfStmt,
+    ImportStmt,
     PrintStmt,
     ReturnStmt,
     VarDeclStmt,
@@ -35,6 +36,7 @@ class StatementParser:
             TokenType.FUNC: self.function_statement,
             TokenType.RETURN: self.return_statement,
             TokenType.CLASS: self.class_statement,
+            TokenType.IMPORT: self.import_statement,
         }
 
     # --- 선언 (declarations) ---
@@ -167,6 +169,22 @@ class StatementParser:
         body = self.block()
 
         return FunctionStmt(name=name, params=params, body=body)
+
+    def import_statement(self):
+        """`import` STRING `alias` IDENTIFIER `;` 형태의 import문을 파싱한다.
+        (요구사항_정리/import.md)
+
+        경로 자리에는 문자열 리터럴만 허용되므로 STRING 토큰만 그대로
+        받는다(값 평가 없이 문법만 확인). 반복문 내부 금지·중복/순환
+        import 검사 등은 AST 구조만으로 끝나지 않는 정적 검사라 Checker
+        몫으로 남겨둔다.
+        """
+        keyword = self.tokens.previous()
+        path = self.tokens.consume(TokenType.STRING, "Expected import path as a string literal")
+        self.tokens.consume(TokenType.ALIAS, "Expected 'alias' after import path")
+        alias = self.tokens.consume(TokenType.IDENTIFIER, "Expected alias name")
+        self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after import statement")
+        return ImportStmt(keyword=keyword, path=path, alias=alias)
 
     def return_statement(self):
         """`return` expression? `;` 형태의 return문을 파싱한다. (요구사항_정리/function.md)

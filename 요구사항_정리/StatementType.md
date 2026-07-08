@@ -11,6 +11,7 @@
 | 함수 선언 | `FunctionStmt`   | 이름/파라미터/본문을 갖는 함수 선언 (추가)      | `Func add(a, b) { ... }`                     |
 | return문 | `ReturnStmt`     | 함수 반환. 값이 없으면 null 반환 (추가)      | `return;` / `return a + b;`                  |
 | 클래스 선언 | `ClassStmt`      | 이름/(선택적) 부모/메서드 목록을 갖는 클래스 선언 (추가) | `Class SpeedRobot : Robot { ... }`           |
+| import문 | `ImportStmt`     | 파일 경로와 별칭을 지정해 다른 파일을 불러오는 문장 (추가) | `import "sum.txt" alias sum;`                |
 
 ## Statement 종류 요약
 
@@ -25,4 +26,5 @@
 | 함수 선언 | 1개 |
 | return문 | 1개 |
 | 클래스 선언 | 1개 |
+| import문 | 1개 |
 
