@@ -2,8 +2,8 @@
 
 import dataclasses
 
-from nodes.expr import Expr, VariableExpr
-from nodes.stmt import BlockStmt, ForStmt, FunctionStmt, IfStmt, ReturnStmt, VarDeclStmt
+from nodes.expr import Expr, SuperExpr, ThisExpr, VariableExpr
+from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ReturnStmt, VarDeclStmt
 from source_error import SourceError
 
 
@@ -29,6 +29,32 @@ class ExprNameFinder:
                 return True
 
         return False
+
+
+class ThisSuperFinder:
+    """Expr 트리 안에서 this/super 사용을 전부 찾는다."""
+
+    def find(self, expr):
+        found = []
+        self._walk(expr, found)
+        return found
+
+    def _walk(self, expr, found):
+        if isinstance(expr, (ThisExpr, SuperExpr)):
+            found.append(expr)
+            return
+
+        if not isinstance(expr, Expr):
+            return
+
+        for field in dataclasses.fields(expr):
+            value = getattr(expr, field.name)
+            if isinstance(value, Expr):
+                self._walk(value, found)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, Expr):
+                        self._walk(item, found)
 
 
 class ScopeChecker:
@@ -73,6 +99,7 @@ class CheckerUnit:
     def __init__(self, statements):
         self.statements = statements
         self.expr_name_finder = ExprNameFinder()
+        self.this_super_finder = ThisSuperFinder()
         self._stmt_handlers = {
             VarDeclStmt: self._check_var_decl_stmt,
             BlockStmt: self._check_block_stmt,
@@ -80,12 +107,15 @@ class CheckerUnit:
             ForStmt: self._check_for_stmt,
             FunctionStmt: self._check_function_stmt,
             ReturnStmt: self._check_return_stmt,
+            ClassStmt: self._check_class_stmt,
         }
 
     def check(self):
         self.errors = []
         self.visited_blocks = set()
         self.function_depth = 0
+        self.init_stack = []
+        self.class_stack = []
         self.check_block(self.statements)
         return self.errors
 
@@ -95,9 +125,28 @@ class CheckerUnit:
             self.check_statement(statement, scope)
 
     def check_statement(self, statement, scope):
+        self._check_this_super_usage(statement)
         handler = self._stmt_handlers.get(type(statement))
         if handler is not None:
             handler(statement, scope)
+
+    def _check_this_super_usage(self, statement):
+        for field in dataclasses.fields(statement):
+            value = getattr(statement, field.name)
+            if isinstance(value, Expr):
+                for node in self.this_super_finder.find(value):
+                    self._validate_this_or_super(node)
+
+    def _validate_this_or_super(self, node):
+        if not self.class_stack:
+            if isinstance(node, ThisExpr):
+                self.errors.append(CheckerError("Can't use 'this' outside of a class.", node.keyword))
+            else:
+                self.errors.append(CheckerError("Can't use 'super' outside of a class.", node.keyword))
+            return
+
+        if isinstance(node, SuperExpr) and not self.class_stack[-1]:
+            self.errors.append(CheckerError("Can't use 'super' in a class with no superclass.", node.keyword))
 
     def _check_var_decl_stmt(self, statement, scope):
         scope.check_var_decl(statement)
@@ -119,18 +168,43 @@ class CheckerUnit:
         self.check_statement(statement.body, scope)
 
     def _check_function_stmt(self, statement, scope):
-        # 파라미터도 이 함수 스코프의 선언으로 취급한다.
-        function_scope = ScopeChecker(self.expr_name_finder, self.errors)
-        for param in statement.params:
-            function_scope.declare_name(param.lexeme, param)
-
-        self.function_depth += 1
-        try:
-            for body_statement in statement.body:
-                self.check_statement(body_statement, function_scope)
-        finally:
-            self.function_depth -= 1
+        self._check_function_body(statement.params, statement.body, is_init=False)
 
     def _check_return_stmt(self, statement, scope):
         if self.function_depth == 0:
             self.errors.append(CheckerError("Can't return from top-level code.", statement.keyword))
+            return
+
+        if self.init_stack[-1] and statement.value is not None:
+            self.errors.append(CheckerError("Can't return a value from an initializer.", statement.keyword))
+
+    def _check_class_stmt(self, statement, scope):
+        self._check_self_inheritance(statement)
+
+        self.class_stack.append(statement.superclass is not None)
+        try:
+            for method in statement.methods:
+                is_init = method.name.lexeme == "init"
+                self._check_function_body(method.params, method.body, is_init)
+        finally:
+            self.class_stack.pop()
+
+    def _check_self_inheritance(self, statement):
+        superclass = statement.superclass
+        if isinstance(superclass, VariableExpr) and superclass.name.lexeme == statement.name.lexeme:
+            self.errors.append(CheckerError("A class can't inherit from itself.", superclass.name))
+
+    def _check_function_body(self, params, body, is_init):
+        # 파라미터도 이 함수(메서드) 스코프의 선언으로 취급한다.
+        function_scope = ScopeChecker(self.expr_name_finder, self.errors)
+        for param in params:
+            function_scope.declare_name(param.lexeme, param)
+
+        self.function_depth += 1
+        self.init_stack.append(is_init)
+        try:
+            for body_statement in body:
+                self.check_statement(body_statement, function_scope)
+        finally:
+            self.init_stack.pop()
+            self.function_depth -= 1

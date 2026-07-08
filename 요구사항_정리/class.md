@@ -4,6 +4,25 @@
 > 슬라이드마다 섞여 있다. 실제 구현 시 대소문자 규칙은 팀에서 통일해서
 > 정하면 된다.
 
+## Node 정의
+
+기존 `nodes/stmt.py`, `nodes/expr.py`에 아래 타입을 추가한다 (this/super/
+자기상속/init-return 오류 검사에 필요한 만큼 우선 반영됨. 필드 접근용
+Get/SetExpr, instanceof용 Expr은 아직 없음).
+
+**Stmt 추가**
+
+| 클래스 | 필드 | 설명 | 예시 |
+| --- | --- | --- | --- |
+| `ClassStmt` | `name: Token`, `superclass: Optional[Expr]`, `methods: List[FunctionStmt]` | 클래스 선언. superclass는 부모 클래스 이름(보통 VariableExpr), 없으면 None. methods는 생성자(init) 포함 전체 메서드 목록 | `Class SpeedRobot : Robot { ... }` |
+
+**Expr 추가**
+
+| 클래스 | 필드 | 설명 | 예시 |
+| --- | --- | --- | --- |
+| `ThisExpr` | `keyword: Token` | 메서드 내부에서 자기 인스턴스를 가리킴 | `this.name` |
+| `SuperExpr` | `keyword: Token`, `method: Token` | 부모 클래스의 메서드를 가리킴 | `super.move` |
+
 ## 구현해야 할 기능
 
 | 분류 | 항목 | 설명 | 예시 |
@@ -40,6 +59,24 @@
 | 런타임 오류 | 존재하지 않는 필드/메서드 접근 | 정의되지 않은 필드·메서드 호출 | `r.notExist();` |
 | 런타임 오류 | 존재하지 않는 필드 읽기 | 정의되지 않은 필드를 읽음 | `print r.power;` |
 
+## 구현 현황 (Checker)
+
+정적 오류 5개는 `src/checker.py`에 구현 완료됨 (테스트: `tests/test_checker/test_checker.py`).
+
+| 항목 | 구현된 메시지 |
+| --- | --- |
+| 클래스 외부 this 사용 | `Can't use 'this' outside of a class.` |
+| 클래스 외부 super 사용 | `Can't use 'super' outside of a class.` |
+| 부모 없는 클래스의 super | `Can't use 'super' in a class with no superclass.` |
+| 자기 자신 상속 | `A class can't inherit from itself.` |
+| init에서 값 있는 return | `Can't return a value from an initializer.` |
+
+`init() { return; }`처럼 값 없는 조기 `return`은 허용된다 (생성자가 항상
+인스턴스를 반환한다는 원칙은 지키면서, 값을 반환하려는 시도만 막는다).
+
+나머지(필드/메서드/인스턴스 생성/상속 실행, instanceof, 런타임 오류 4개)는
+Assembler/Executor 쪽 구현이 필요해서 아직 미착수 상태다.
+
 ## 적용 가능한 디자인 패턴 (가산점)
 
 > 디자인 패턴은 여러 곳에서 발생될 수 있는 문제를 해결하는 일반화된
@@ -56,6 +93,8 @@
 
 | 분류 | 개수 |
 | --- | -: |
+| Node (Stmt) | 1개 |
+| Node (Expr) | 2개 |
 | 클래스 선언/인스턴스 | 2개 |
 | 필드 | 3개 |
 | 메서드 | 4개 |
