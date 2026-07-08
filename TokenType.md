@@ -2,19 +2,21 @@
 
 | 분류        | 개수 | 설명                                                                |
 | --------- |---:|-------------------------------------------------------------------|
-| 괄호        | 4개 | `(`, `)`, `{`, `}`                                                |
+| 괄호        | 6개 | `(`, `)`, `{`, `}`, `[`, `]`                                       |
 | 구분자       | 1개 | `;`                                                               |
 | 산술 연산자    | 4개 | `+`, `-`, `*`, `/`                                                |
 | 대입/비교 연산자 | 8개 | `=`, `>`, `<`, `==`, `>=`, `<=`, `=<`, `=>`                        |
 | 단항 연산자    | 2개 | `!`, `!=`                                                          |
-| 예약어       | 9개 | `var`, `if`, `else`, `for`, `print`, `true`, `false`, `and`, `or` |
+| 예약어       | 17개 | `var`, `if`, `else`, `for`, `print`, `true`, `false`, `and`, `or`, `Func`, `Class`, `return`, `This`, `Super`, `instanceof`, `import`, `alias` |
 | 식별자       | 1개 | 변수 또는 함수 이름                                                       |
 | 리터럴       | 2개 | 숫자(`NUMBER`), 문자열(`STRING`)                                       |
 | 종료 토큰     | 1개 | `EOF`                                                             |
 
 ## 총 TokenType
 
-* **총 32개**
+* **총 42개**
+
+> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`)은 function/class/정적 배열/import 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름 — 팀에서 확정 필요.
 
 
 
@@ -26,6 +28,8 @@
 | 괄호 | RIGHT_PAREN   | )                | 닫는 소괄호      |
 | 괄호 | LEFT_BRACE    | {                | 여는 중괄호      |
 | 괄호 | RIGHT_BRACE   | }                | 닫는 중괄호      |
+| 괄호 | LEFT_BRACKET  | [                | 배열 인덱스 시작 (추가) |
+| 괄호 | RIGHT_BRACKET | ]                | 배열 인덱스 종료 (추가) |
 | 구분자 | SEMICOLON     | ;                | 문장 종료       |
 | 산술 연산자 | PLUS          | +                | 덧셈          |
 | 산술 연산자 | MINUS         | -                | 뺄셈          |
@@ -50,6 +54,14 @@
 | 예약어 | FALSE         | false            | Boolean 거짓  |
 | 예약어 | AND           | and              | 논리 AND      |
 | 예약어 | OR            | or               | 논리 OR       |
+| 예약어 | FUNC          | Func             | 함수 선언 (추가)  |
+| 예약어 | CLASS         | Class            | 클래스 선언 (추가) |
+| 예약어 | RETURN        | return           | 함수 반환 (추가)  |
+| 예약어 | THIS          | This             | 자기 인스턴스 참조 (추가) |
+| 예약어 | SUPER         | Super            | 부모 클래스 참조 (추가) |
+| 예약어 | INSTANCEOF    | instanceof       | 인스턴스 여부 확인 연산자 (추가) |
+| 예약어 | IMPORT        | import           | 파일 import (추가) |
+| 예약어 | ALIAS         | alias            | import 별칭 (추가) |
 | 식별자 | IDENTIFIER    | a, num, x        | 변수 또는 함수 이름 |
 | 리터럴 | NUMBER        | 3, 100, 3.141592 | 숫자 값        |
 | 리터럴 | STRING        | "hello"          | 문자열 값       |

@@ -307,3 +307,47 @@ def test_step19_tracks_line_numbers_across_newlines():
         Token(TokenType.SEMICOLON, ";", line=2),
         Token(TokenType.EOF, "", line=2),
     ]
+
+# --- 20단계: 추가 - 대괄호 (정적 배열 인덱싱) ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("[", TokenType.LEFT_BRACKET),   # arr[0]
+        ("]", TokenType.RIGHT_BRACKET),  # arr[0]
+    ],
+)
+def test_step20_array_bracket_tokens(source, expected_type):
+    """arr[i] 인덱싱 문법에 쓰일 [ / ] 단일 문자 토큰."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
+
+# --- 21단계: 추가 - 함수/클래스/import 키워드 ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("Func", TokenType.FUNC),              # Func add(a, b) { ... }
+        ("Class", TokenType.CLASS),            # Class Robot { ... }
+        ("return", TokenType.RETURN),          # return a + b;
+        ("This", TokenType.THIS),              # This.position = ...
+        ("Super", TokenType.SUPER),            # Super.move(dist);
+        ("instanceof", TokenType.INSTANCEOF),  # w instanceof SpeedRobot
+        ("import", TokenType.IMPORT),          # import "sum.txt" alias sum;
+        ("alias", TokenType.ALIAS),            # import "sum.txt" alias sum;
+    ],
+)
+def test_step21_added_keywords(source, expected_type):
+    """추가되는 함수/클래스/import 관련 예약어들 (IDENTIFIER가 아닌 전용 타입이어야 한다)."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]
