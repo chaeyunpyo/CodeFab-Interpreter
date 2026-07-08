@@ -146,6 +146,7 @@ class StatementParser:
         (요구사항_정리/class.md의 "클래스가 아닌 대상 상속" 오류 참고),
         여기서는 이름만 참조로 남겨두고 값 확인은 Executor 몫으로 둔다.
         """
+        line = self.tokens.previous().line  # 'Class' 키워드
         name = self.tokens.consume(TokenType.IDENTIFIER, "Expected class name")
 
         superclass = None
@@ -159,7 +160,7 @@ class StatementParser:
             methods.append(self.method_declaration())
         self.tokens.consume(TokenType.RIGHT_BRACE, "Expected '}' after class body")
 
-        return ClassStmt(name=name, superclass=superclass, methods=methods)
+        return ClassStmt(name=name, superclass=superclass, methods=methods, line=line)
 
     def method_declaration(self):
         """Class 본문 안의 메서드(생성자 init 포함) 선언을 파싱한다. `Func` 키워드
@@ -174,6 +175,7 @@ class StatementParser:
         FunctionStmt를 만든다. kind는 문법 차이 없이 오류 메시지에만 쓰인다
         ("function" 또는 "method").
         """
+        line = self.tokens.current().line
         name = self.tokens.consume(TokenType.IDENTIFIER, f"Expected {kind} name")
         self.tokens.consume(TokenType.LEFT_PAREN, f"Expected '(' after {kind} name")
 
@@ -187,7 +189,7 @@ class StatementParser:
         self.tokens.consume(TokenType.LEFT_BRACE, f"Expected '{{' before {kind} body")
         body = self.block()
 
-        return FunctionStmt(name=name, params=params, body=body)
+        return FunctionStmt(name=name, params=params, body=body, line=line)
 
     def return_statement(self):
         """`return` expression? `;` 형태의 return문을 파싱한다. (요구사항_정리/function.md)
