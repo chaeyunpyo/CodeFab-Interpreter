@@ -111,3 +111,17 @@ class ClassStmt(Stmt):
     name: Token
     superclass: Optional[Expr] = None
     methods: List[FunctionStmt] = field(default_factory=list)
+
+
+@dataclass
+class ImportStmt(Stmt):
+    """import문. 예: import "sum.txt" alias sum; (요구사항_정리/import.md)
+
+    keyword는 오류 위치(줄 번호) 표시용 import 토큰, path는 파일 경로
+    자리의 Expr(문자열 리터럴만 허용, 보통 LiteralExpr), alias는 별칭
+    식별자 토큰이다.
+    """
+
+    keyword: Token
+    path: Expr
+    alias: Token
