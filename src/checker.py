@@ -1,9 +1,9 @@
-"""Checker Unit 정의. 자세한 설명은 checker_summary.txt 참고."""
+"""Checker Unit 정의. 자세한 설명은 요구사항_정리/Unit.md 참고."""
 
 import dataclasses
 
 from nodes.expr import Expr, SuperExpr, ThisExpr, VariableExpr
-from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ReturnStmt, VarDeclStmt
+from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ImportStmt, ReturnStmt, VarDeclStmt
 from source_error import SourceError
 
 
@@ -62,6 +62,7 @@ class ScopeChecker:
 
     def __init__(self, expr_name_finder, errors):
         self.declared_names = []
+        self.imported_paths = []
         self.expr_name_finder = expr_name_finder
         self.errors = errors
 
@@ -81,6 +82,16 @@ class ScopeChecker:
             self._record_error("Can't read local variable in initializer.", name_token)
 
         self.declare_name(name, name_token)
+
+    def check_import(self, statement):
+        """import문 하나를 검사한다. 같은 파일 재import와 alias 이름 충돌을 잡는다."""
+        path = statement.path.literal
+        if path in self.imported_paths:
+            self._record_error("Already imported this file in this scope.", statement.keyword)
+        else:
+            self.imported_paths.append(path)
+
+        self.declare_name(statement.alias.lexeme, statement.alias)
 
     def declare_name(self, name, token):
         """이 스코프에 이름 하나를 선언한다. 이미 있으면 중복 오류를 기록한다."""
@@ -108,6 +119,7 @@ class CheckerUnit:
             FunctionStmt: self._check_function_stmt,
             ReturnStmt: self._check_return_stmt,
             ClassStmt: self._check_class_stmt,
+            ImportStmt: self._check_import_stmt,
         }
 
     def check(self):
@@ -116,6 +128,7 @@ class CheckerUnit:
         self.function_depth = 0
         self.init_stack = []
         self.class_stack = []
+        self.loop_depth = 0
         self.check_block(self.statements)
         return self.errors
 
@@ -165,7 +178,17 @@ class CheckerUnit:
     def _check_for_stmt(self, statement, scope):
         if statement.initializer is not None:
             self.check_statement(statement.initializer, scope)
-        self.check_statement(statement.body, scope)
+
+        self.loop_depth += 1
+        try:
+            self.check_statement(statement.body, scope)
+        finally:
+            self.loop_depth -= 1
+
+    def _check_import_stmt(self, statement, scope):
+        if self.loop_depth > 0:
+            self.errors.append(CheckerError("Can't use import statement inside a loop.", statement.keyword))
+        scope.check_import(statement)
 
     def _check_function_stmt(self, statement, scope):
         self._check_function_body(statement.params, statement.body, is_init=False)
