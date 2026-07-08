@@ -13,9 +13,12 @@ from .errors import (
     IndexOutOfRangeError,
     InvalidArraySizeError,
     InvalidIndexTypeError,
+    NotAClassError,
     NotAnArrayError,
+    NotAnInstanceError,
     NotCallableError,
     TypeMismatchError,
+    UndefinedPropertyError,
     UndefinedVariableError,
 )
 from ._array import FabArray
@@ -23,6 +26,7 @@ from ._storage import Storage
 from ._signals import ReturnSignal
 from ._callable import LoxCallable
 from ._function import Function
+from ._class import LoxClass, LoxInstance
 from ._expr import evaluate, stringify
 from ._stmt import execute
 
@@ -37,10 +41,15 @@ __all__ = [
     "InvalidIndexTypeError",
     "NotAnArrayError",
     "InvalidArraySizeError",
+    "NotAnInstanceError",
+    "UndefinedPropertyError",
+    "NotAClassError",
     "FabArray",
     "ReturnSignal",
     "LoxCallable",
     "Function",
+    "LoxClass",
+    "LoxInstance",
     "Storage",
     "evaluate",
     "execute",
