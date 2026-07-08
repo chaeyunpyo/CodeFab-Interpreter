@@ -87,3 +87,22 @@ class CallExpr(Expr):
     callee: Expr
     paren: Token
     arguments: List[Expr] = field(default_factory=list)
+
+
+@dataclass
+class ThisExpr(Expr):
+    """메서드 내부에서 자기 인스턴스를 가리키는 표현식. 예: this.name (요구사항_정리/class.md)"""
+
+    keyword: Token
+
+
+@dataclass
+class SuperExpr(Expr):
+    """부모 클래스의 메서드를 가리키는 표현식. 예: super.move (요구사항_정리/class.md)
+
+    keyword는 오류 위치(줄 번호) 표시용 super 토큰, method는 호출할
+    부모 메서드 이름 토큰이다.
+    """
+
+    keyword: Token
+    method: Token

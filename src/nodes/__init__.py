@@ -7,11 +7,14 @@ from .expr import (
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
+    SuperExpr,
+    ThisExpr,
     UnaryExpr,
     VariableExpr,
 )
 from .stmt import (
     BlockStmt,
+    ClassStmt,
     ExpressionStmt,
     ForStmt,
     FunctionStmt,
@@ -32,6 +35,8 @@ __all__ = [
     "LogicalExpr",
     "GroupingExpr",
     "CallExpr",
+    "ThisExpr",
+    "SuperExpr",
     "Stmt",
     "ExpressionStmt",
     "PrintStmt",
@@ -41,4 +46,5 @@ __all__ = [
     "ForStmt",
     "FunctionStmt",
     "ReturnStmt",
+    "ClassStmt",
 ]
