@@ -9,6 +9,8 @@ Public API:
     storage.exists(name)         - 변수 존재 여부 확인
     storage.push_scope()         - 새 블록 스코프 진입 (BlockStmt 진입 시)
     storage.pop_scope()          - 현재 블록 스코프 종료 (BlockStmt 종료 시)
+    storage.push_call_frame()    - 함수 호출 진입 (CallExpr 실행 시)
+    storage.pop_call_frame()     - 함수 호출 종료 (CallExpr 실행 종료 시)
 """
 
 from typing import Any, Dict, List
@@ -20,6 +22,8 @@ class Storage:
     def __init__(self) -> None:
         # 인덱스 0이 전역 스코프, -1이 현재 가장 안쪽 스코프
         self._scopes: List[Dict[str, Any]] = [{}]
+        # 함수 호출 진입 시 호출부의 지역 스코프 목록을 잠시 보관해두는 스택.
+        self._call_stack: List[List[Dict[str, Any]]] = []
 
     # ── 변수 선언 ─────────────────────────────────────────────────────────────
 
@@ -77,3 +81,19 @@ class Storage:
         if len(self._scopes) <= 1:
             raise RuntimeError("Cannot pop the global scope")
         self._scopes.pop()
+
+    # ── 함수 호출 프레임 관리 ─────────────────────────────────────────────────────
+
+    def push_call_frame(self) -> None:
+        """함수 호출에 진입한다 (CallExpr 실행 시 호출).
+
+        호출부의 지역 스코프 체인은 함수 본문에서 보이면 안 되므로, 현재
+        스코프 목록을 스택에 스냅샷으로 저장해두고 전역 스코프만 남긴 뒤
+        그 위에 새 프레임(파라미터용 스코프)을 하나 쌓는다.
+        """
+        self._call_stack.append(self._scopes)
+        self._scopes = [self._scopes[0], {}]
+
+    def pop_call_frame(self) -> None:
+        """함수 호출을 종료하고 호출부의 스코프 체인을 복원한다."""
+        self._scopes = self._call_stack.pop()

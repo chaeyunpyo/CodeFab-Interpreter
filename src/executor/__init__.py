@@ -6,8 +6,17 @@ Public API:
     stringify(value) -> str          - print 출력 / 오류 메시지용 문자열 변환
 """
 
-from .errors import DivideByZeroError, ExecutionError, TypeMismatchError, UndefinedVariableError
+from .errors import (
+    ArityMismatchError,
+    DivideByZeroError,
+    ExecutionError,
+    NotCallableError,
+    TypeMismatchError,
+    UndefinedVariableError,
+)
 from ._storage import Storage
+from ._signals import ReturnSignal
+from ._function import Function
 from ._expr import evaluate, stringify
 from ._stmt import execute
 
@@ -16,6 +25,10 @@ __all__ = [
     "TypeMismatchError",
     "DivideByZeroError",
     "UndefinedVariableError",
+    "NotCallableError",
+    "ArityMismatchError",
+    "ReturnSignal",
+    "Function",
     "Storage",
     "evaluate",
     "execute",

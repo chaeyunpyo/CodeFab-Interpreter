@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Type
 from nodes import (
     AssignExpr,
     BinaryExpr,
+    CallExpr,
     Expr,
     GroupingExpr,
     LiteralExpr,
@@ -13,7 +14,14 @@ from nodes import (
 )
 from nodes.token_type import TokenType
 from ._storage import Storage
-from .errors import DivideByZeroError, TypeMismatchError, UndefinedVariableError
+from ._function import Function
+from .errors import (
+    ArityMismatchError,
+    DivideByZeroError,
+    NotCallableError,
+    TypeMismatchError,
+    UndefinedVariableError,
+)
 
 
 def _is_number(value: Any) -> bool:
@@ -124,6 +132,33 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
     return numeric_op(left, right)
 
 
+def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
+    # _stmt와의 순환 import를 피하기 위해 호출 시점에 지연 import한다.
+    from ._stmt import execute
+    from ._signals import ReturnSignal
+
+    callee = evaluate(expr.callee, storage)
+    if not isinstance(callee, Function):
+        raise NotCallableError(expr.paren)
+
+    arguments = [evaluate(argument, storage) for argument in expr.arguments]
+    if len(arguments) != callee.arity():
+        raise ArityMismatchError(callee.arity(), len(arguments), expr.paren)
+
+    storage.push_call_frame()
+    try:
+        for param, argument in zip(callee.declaration.params, arguments):
+            storage.define(param.lexeme, argument)
+        try:
+            for body_stmt in callee.declaration.body:
+                execute(body_stmt, storage)
+        except ReturnSignal as signal:
+            return signal.value
+        return None
+    finally:
+        storage.pop_call_frame()
+
+
 _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     LiteralExpr: _evaluate_literal,
     VariableExpr: _evaluate_variable,
@@ -132,6 +167,7 @@ _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     UnaryExpr: _evaluate_unary,
     LogicalExpr: _evaluate_logical,
     BinaryExpr: _evaluate_binary,
+    CallExpr: _evaluate_call,
 }
 
 

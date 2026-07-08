@@ -1,8 +1,17 @@
 import pytest
 
-from executor import UndefinedVariableError, evaluate, execute
+from executor import ReturnSignal, UndefinedVariableError, evaluate, execute
 from nodes.expr import AssignExpr, BinaryExpr, LiteralExpr, VariableExpr
-from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, Stmt, VarDeclStmt
+from nodes.stmt import (
+    BlockStmt,
+    ExpressionStmt,
+    ForStmt,
+    IfStmt,
+    PrintStmt,
+    ReturnStmt,
+    Stmt,
+    VarDeclStmt,
+)
 from nodes.token_type import TokenType
 
 from helpers import tok
@@ -105,6 +114,39 @@ class TestExecuteBlockStmt:
 
     def test_빈_블록은_아무_일도_하지_않는다(self, storage):
         execute(BlockStmt([]), storage)  # 예외 없이 끝나야 한다
+
+
+# ── Statement 실행 : return ──────────────────────────────────────────────────
+
+class TestExecuteReturnStmt:
+    def test_값이_있으면_ReturnSignal에_평가된_값을_담아_던진다(self, storage):
+        storage.define("a", 3.0)
+        stmt = ReturnStmt(
+            tok(TokenType.RETURN, "return"),
+            BinaryExpr(VariableExpr(tok(TokenType.IDENTIFIER, "a")), tok(TokenType.PLUS, "+"), LiteralExpr(1.0)),
+        )
+        with pytest.raises(ReturnSignal) as exc_info:
+            execute(stmt, storage)
+        assert exc_info.value.value == 4.0
+
+    def test_값이_없으면_ReturnSignal의_value가_None이다(self, storage):
+        stmt = ReturnStmt(tok(TokenType.RETURN, "return"), None)
+        with pytest.raises(ReturnSignal) as exc_info:
+            execute(stmt, storage)
+        assert exc_info.value.value is None
+
+    def test_블록_안_return이_이후_문장을_건너뛰고_밖으로_전파된다(self, storage):
+        storage.define("ran", 0.0)
+        block = BlockStmt(
+            [
+                ReturnStmt(tok(TokenType.RETURN, "return"), LiteralExpr(1.0)),
+                ExpressionStmt(AssignExpr(tok(TokenType.IDENTIFIER, "ran"), LiteralExpr(1.0))),
+            ]
+        )
+        with pytest.raises(ReturnSignal) as exc_info:
+            execute(block, storage)
+        assert exc_info.value.value == 1.0
+        assert storage.get("ran") == 0.0
 
 
 class _지원하지_않는_Stmt(Stmt):
