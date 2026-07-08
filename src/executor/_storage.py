@@ -103,7 +103,7 @@ class Storage:
         그 위에 새 프레임(파라미터용 스코프)을 하나 쌓는다.
         """
         self._call_stack.append(self._scopes)
-        self._scopes = [self._scopes[0], {}]
+        self._scopes = [dict(self._scopes[0]), {}]
 
     def pop_call_frame(self) -> None:
         """함수 호출을 종료하고 호출부의 스코프 체인을 복원한다."""
