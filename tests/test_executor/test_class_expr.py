@@ -15,6 +15,7 @@ from executor import (
     Function,
     LoxClass,
     LoxInstance,
+    NotAClassError,
     NotAnInstanceError,
     UndefinedPropertyError,
     UndefinedVariableError,
@@ -26,6 +27,7 @@ from nodes.expr import (
     CallExpr,
     FieldGetExpr,
     FieldSetExpr,
+    InstanceOfExpr,
     LiteralExpr,
     SuperExpr,
     ThisExpr,
@@ -49,6 +51,14 @@ def this_tok():
 
 def super_tok():
     return tok(TokenType.SUPER, "Super")
+
+
+def instanceof_tok():
+    return tok(TokenType.INSTANCEOF, "instanceof")
+
+
+def instanceof_expr(obj_expr, class_expr) -> InstanceOfExpr:
+    return InstanceOfExpr(obj_expr, instanceof_tok(), class_expr)
 
 
 def declare_method(name: str, params: list, body: list) -> FunctionStmt:
@@ -344,3 +354,51 @@ class TestSuperExpr:
     def test_super_외부_사용시_UndefinedVariableError(self, storage):
         with pytest.raises(UndefinedVariableError):
             evaluate(super_expr("move"), storage)
+
+
+# ── InstanceOfExpr 평가 ───────────────────────────────────────────────────────
+
+class TestInstanceOfExpr:
+    def test_자신의_클래스에_대해_True를_반환한다(self, storage):
+        execute(declare_class("Robot", []), storage)
+        storage.define("r", evaluate(call_expr(var_expr("Robot")), storage))
+        assert evaluate(instanceof_expr(var_expr("r"), var_expr("Robot")), storage) is True
+
+    def test_관계_없는_클래스에_대해_False를_반환한다(self, storage):
+        execute(declare_class("Robot", []), storage)
+        execute(declare_class("Worker", []), storage)
+        storage.define("r", evaluate(call_expr(var_expr("Robot")), storage))
+        assert evaluate(instanceof_expr(var_expr("r"), var_expr("Worker")), storage) is False
+
+    def test_부모_클래스에_대해_True를_반환한다(self, storage):
+        # SpeedRobot instanceof Robot → True (상속 관계)
+        execute(declare_class("Robot", []), storage)
+        execute(declare_class("SpeedRobot", [], superclass=var_expr("Robot")), storage)
+        storage.define("sr", evaluate(call_expr(var_expr("SpeedRobot")), storage))
+        assert evaluate(instanceof_expr(var_expr("sr"), var_expr("Robot")), storage) is True
+
+    def test_자식_클래스에_대해_False를_반환한다(self, storage):
+        # Robot instanceof SpeedRobot → False (역방향)
+        execute(declare_class("Robot", []), storage)
+        execute(declare_class("SpeedRobot", [], superclass=var_expr("Robot")), storage)
+        storage.define("r", evaluate(call_expr(var_expr("Robot")), storage))
+        assert evaluate(instanceof_expr(var_expr("r"), var_expr("SpeedRobot")), storage) is False
+
+    def test_다단계_상속_체인에서_조상_클래스에_대해_True를_반환한다(self, storage):
+        # TurboRobot instanceof Robot → True (Robot → SpeedRobot → TurboRobot)
+        execute(declare_class("Robot", []), storage)
+        execute(declare_class("SpeedRobot", [], superclass=var_expr("Robot")), storage)
+        execute(declare_class("TurboRobot", [], superclass=var_expr("SpeedRobot")), storage)
+        storage.define("t", evaluate(call_expr(var_expr("TurboRobot")), storage))
+        assert evaluate(instanceof_expr(var_expr("t"), var_expr("Robot")), storage) is True
+
+    def test_인스턴스가_아닌_값은_False를_반환한다(self, storage):
+        execute(declare_class("Robot", []), storage)
+        storage.define("x", 42.0)
+        assert evaluate(instanceof_expr(var_expr("x"), var_expr("Robot")), storage) is False
+
+    def test_오른쪽이_클래스가_아니면_NotAClassError(self, storage):
+        storage.define("r", LoxInstance(LoxClass("Robot")))
+        storage.define("notClass", 10.0)
+        with pytest.raises(NotAClassError):
+            evaluate(instanceof_expr(var_expr("r"), var_expr("notClass")), storage)

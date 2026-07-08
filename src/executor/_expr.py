@@ -11,6 +11,7 @@ from nodes import (
     GroupingExpr,
     IndexGetExpr,
     IndexSetExpr,
+    InstanceOfExpr,
     LiteralExpr,
     LogicalExpr,
     SuperExpr,
@@ -22,12 +23,13 @@ from nodes.token_type import TokenType
 from ._storage import Storage
 from ._callable import LoxCallable
 from ._array import FabArray, _parse_integer_value
-from ._class import LoxInstance
+from ._class import LoxClass, LoxInstance
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
     IndexOutOfRangeError,
     InvalidIndexTypeError,
+    NotAClassError,
     NotAnArrayError,
     NotAnInstanceError,
     NotCallableError,
@@ -207,6 +209,22 @@ def _evaluate_super(expr: SuperExpr, storage: Storage) -> Any:
     return method.bind(this)
 
 
+def _evaluate_instanceof(expr: InstanceOfExpr, storage: Storage) -> bool:
+    obj = evaluate(expr.object, storage)
+    klass = evaluate(expr.class_name, storage)
+    if not isinstance(klass, LoxClass):
+        raise NotAClassError(expr.keyword)
+    if not isinstance(obj, LoxInstance):
+        return False
+    # 상속 체인을 따라 올라가며 일치하는 클래스를 찾는다 (Chain of Responsibility 패턴).
+    current = obj.klass
+    while current is not None:
+        if current is klass:
+            return True
+        current = current.superclass
+    return False
+
+
 def _resolve_array_access(obj: Any, idx_val: Any, bracket) -> tuple:
     """배열 타입·인덱스 타입·범위를 한 번에 검사하고 (FabArray, int)를 반환한다."""
     if not isinstance(obj, FabArray):
@@ -254,6 +272,7 @@ _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     FieldGetExpr: _evaluate_field_get,
     FieldSetExpr: _evaluate_field_set,
     SuperExpr: _evaluate_super,
+    InstanceOfExpr: _evaluate_instanceof,
     IndexGetExpr: _evaluate_index_get,
     IndexSetExpr: _evaluate_index_set,
 }
