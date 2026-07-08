@@ -3,8 +3,10 @@ from nodes import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
+    FunctionStmt,
     IfStmt,
     PrintStmt,
+    ReturnStmt,
     VarDeclStmt,
 )
 
@@ -28,6 +30,8 @@ class StatementParser:
             TokenType.IF: self.if_statement,
             TokenType.PRINT: self.print_statement,
             TokenType.LEFT_BRACE: self.block_statement,
+            TokenType.FUNC: self.function_statement,
+            TokenType.RETURN: self.return_statement,
         }
 
     # --- 선언 (declarations) ---
@@ -102,6 +106,37 @@ class StatementParser:
     def block_statement(self):
         """`{` 로 시작하는 블록 문장을 파싱한다."""
         return BlockStmt(statements=self.block())
+
+    def function_statement(self):
+        """`Func` IDENTIFIER `(` params? `)` `{` body `}` 형태의 함수 선언을 파싱한다.
+        (요구사항_정리/function.md)
+        """
+        name = self.tokens.consume(TokenType.IDENTIFIER, "Expected function name")
+        self.tokens.consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
+
+        params = []
+        if not self.tokens.check(TokenType.RIGHT_PAREN):
+            params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+            while self.tokens.match(TokenType.COMMA):
+                params.append(self.tokens.consume(TokenType.IDENTIFIER, "Expected parameter name"))
+        self.tokens.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
+
+        self.tokens.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
+        body = self.block()
+
+        return FunctionStmt(name=name, params=params, body=body)
+
+    def return_statement(self):
+        """`return` expression? `;` 형태의 return문을 파싱한다. (요구사항_정리/function.md)
+
+        keyword는 return이 함수 외부에 있는지 등을 검사할 때 오류 위치로 쓰인다.
+        """
+        keyword = self.tokens.previous()
+        value = None
+        if not self.tokens.check(TokenType.SEMICOLON):
+            value = self.expressions.parse()
+        self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after return value")
+        return ReturnStmt(keyword=keyword, value=value)
 
     def block(self):
         """`}` 나 파일 끝을 만날 때까지 한 줄씩 반복해서 읽어 문장 목록을 만든다."""

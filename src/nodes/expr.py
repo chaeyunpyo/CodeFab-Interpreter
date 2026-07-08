@@ -106,3 +106,26 @@ class SuperExpr(Expr):
 
     keyword: Token
     method: Token
+class IndexGetExpr(Expr):
+    """배열 인덱스 읽기 표현식. 예: arr[0] (요구사항_정리/정적배열.md)
+
+    object는 인덱싱 대상(보통 VariableExpr), bracket은 오류 위치(줄 번호)
+    표시용으로 여는 대괄호 토큰을 담는다.
+    """
+
+    object: Expr
+    bracket: Token
+    index: Expr
+
+
+@dataclass
+class IndexSetExpr(Expr):
+    """배열 인덱스 쓰기 표현식. 예: arr[0] = 10 (요구사항_정리/정적배열.md)
+
+    object/bracket/index는 IndexGetExpr과 동일하고, value가 대입할 값이다.
+    """
+
+    object: Expr
+    bracket: Token
+    index: Expr
+    value: Expr
