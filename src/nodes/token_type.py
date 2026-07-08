@@ -10,6 +10,9 @@ class TokenType(Enum):
     LEFT_BRACKET = auto()
     RIGHT_BRACKET = auto()
     SEMICOLON = auto()
+    COMMA = auto()
+    DOT = auto()
+    COLON = auto()
 
     # 산술 연산자 (PDF p.27)
     PLUS = auto()
