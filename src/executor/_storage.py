@@ -21,7 +21,8 @@ from .errors import UndefinedVariableError
 class Storage:
     def __init__(self) -> None:
         # 인덱스 0이 전역 스코프, -1이 현재 가장 안쪽 스코프
-        self._scopes: List[Dict[str, Any]] = [{}]
+        from ._array import ARRAY_BUILTIN
+        self._scopes: List[Dict[str, Any]] = [{"Array": ARRAY_BUILTIN}]
         # 함수 호출 진입 시 호출부의 지역 스코프 목록을 잠시 보관해두는 스택.
         self._call_stack: List[List[Dict[str, Any]]] = []
 
