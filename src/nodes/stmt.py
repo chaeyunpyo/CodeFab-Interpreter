@@ -77,3 +77,23 @@ class ForStmt(Stmt):
     condition: Optional[Expr]
     increment: Optional[Expr]
     body: Stmt
+
+
+@dataclass
+class FunctionStmt(Stmt):
+    """함수 선언문. 예: Func add(a, b) { ... } (요구사항_정리/function.md)"""
+
+    name: Token
+    params: List[Token] = field(default_factory=list)
+    body: List[Stmt] = field(default_factory=list)
+
+
+@dataclass
+class ReturnStmt(Stmt):
+    """return문. 예: return; / return a + b; (요구사항_정리/function.md)
+
+    keyword는 오류 위치(줄 번호) 표시용, value가 없으면 null 반환.
+    """
+
+    keyword: Token
+    value: Optional[Expr] = None
