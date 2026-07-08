@@ -1,6 +1,6 @@
 import pytest
 
-from prompt_shell import PromptShell, main, run_cli, run_file
+from prompt_shell import PromptShell, main, run_cli, run_debug, run_file
 
 
 # --- 0단계: 가장 단순한 케이스 (print 문 한 줄을 실행하면 결과가 출력되어야 한다) ---
@@ -245,26 +245,55 @@ def test_step14_run_file_reports_missing_file_without_crashing(capsys):
 
     assert capsys.readouterr().out != ""
 
-# --- 15단계: main() - 실행 모드(Prompt Shell/파일) 선택 진입점 ---
+# --- 15단계: main(args) - argv 기반 모드 분기 (factory / factory run <파일> / factory debug <파일>) ---
 
-def test_step15_main_runs_prompt_shell_when_chosen(monkeypatch, capsys):
-    """'1'을 선택하면 Prompt Shell(REPL) 모드로 진입해야 한다."""
-    inputs = iter(["1", "print 1;", "exit"])
+def test_step15_main_with_no_args_runs_prompt_shell(monkeypatch, capsys):
+    """인자 없이 실행하면(factory) Prompt Shell(REPL) 모드로 진입해야 한다."""
+    inputs = iter(["print 1;", "exit"])
     monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
 
-    main()
+    main([])
 
     assert capsys.readouterr().out.endswith("1\n")
 
 
-def test_step15_main_runs_file_when_chosen(monkeypatch, tmp_path, capsys):
-    """'2'를 선택하면 파일 경로를 입력받아 해당 파일을 실행해야 한다."""
+def test_step15_main_run_command_executes_file(tmp_path, capsys):
+    """factory run <파일>은 해당 파일을 파일 모드로 실행해야 한다."""
     script = tmp_path / "script.txt"
     script.write_text("print 42;\n", encoding="utf-8")
 
-    inputs = iter(["2", str(script)])
-    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+    main(["run", str(script)])
 
-    main()
+    assert capsys.readouterr().out == "42\n"
 
-    assert capsys.readouterr().out.endswith("42\n")
+
+def test_step15_main_run_command_without_path_shows_usage(capsys):
+    """factory run (파일 경로 없이)은 크래시 없이 사용법 메시지를 출력해야 한다."""
+    main(["run"])
+
+    assert capsys.readouterr().out != ""
+
+
+def test_step15_main_debug_command_calls_run_debug(tmp_path, capsys):
+    """factory debug <파일>은 (아직 자리표시자인) 디버그 모드로 진입해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+
+    main(["debug", str(script)])
+
+    assert str(script) in capsys.readouterr().out
+
+
+def test_step15_main_unknown_command_shows_usage_without_crashing(capsys):
+    """알 수 없는 명령을 줘도 크래시 없이 사용법 메시지를 출력해야 한다."""
+    main(["foo"])
+
+    assert capsys.readouterr().out != ""
+
+# --- 16단계: run_debug() - 디버그 모드 자리표시자 (step/next/break/watch는 추후 구현) ---
+
+def test_step16_run_debug_is_a_placeholder(capsys):
+    """아직 미구현이라는 것을 명확히 알리고, 크래시하지 않아야 한다."""
+    run_debug("aaa.txt")
+
+    assert "aaa.txt" in capsys.readouterr().out
