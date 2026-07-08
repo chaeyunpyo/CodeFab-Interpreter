@@ -2,6 +2,7 @@ import sys
 
 from assembler import Assembler, AssemblerError, AstBuilder, Tokenizer, UnexpectedTokenError
 from checker import CheckerUnit
+from executor import ExecutionError
 from nodes.token_type import TokenType
 from pipeline import Pipeline
 
@@ -149,14 +150,11 @@ def _handle_debug_command(debugger: Debugger, command: str, source_lines) -> Non
     arg = arg.strip()
 
     if name == "step":
-        debugger.step()
-        _print_debugger_status(debugger, source_lines)
+        _run_stepping_command(debugger, debugger.step, source_lines)
     elif name == "next":
-        debugger.next()
-        _print_debugger_status(debugger, source_lines)
+        _run_stepping_command(debugger, debugger.next, source_lines)
     elif name == "continue":
-        debugger.continue_()
-        _print_debugger_status(debugger, source_lines)
+        _run_stepping_command(debugger, debugger.continue_, source_lines)
     elif name == "break":
         line = _parse_line_number(arg, "break <줄번호>")
         if line is not None:
@@ -183,6 +181,15 @@ def _handle_debug_command(debugger: Debugger, command: str, source_lines) -> Non
         _print_inspect(debugger)
     else:
         print(f"알 수 없는 명령입니다: {command}")
+
+
+def _run_stepping_command(debugger: Debugger, action, source_lines) -> None:
+    """step/next/continue 공통 실행: 실행 중 런타임 오류가 나도 세션이 죽지 않게 잡는다."""
+    try:
+        action()
+    except ExecutionError as error:
+        print(error)
+    _print_debugger_status(debugger, source_lines)
 
 
 def _parse_line_number(arg: str, usage: str):

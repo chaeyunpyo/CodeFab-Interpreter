@@ -302,6 +302,22 @@ def test_step16_run_debug_reports_missing_file_without_crashing(capsys):
     assert capsys.readouterr().out != ""
 
 
+def test_step16_run_debug_runtime_error_during_step_does_not_crash_the_session(
+    monkeypatch, tmp_path, capsys
+):
+    """step 도중 런타임 오류(미정의 변수 등)가 나도 세션이 죽지 않고 메시지만 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\nprint notDefined;\nprint 3;\n", encoding="utf-8")
+    inputs = iter(["step", "step", "step", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))  # 예외가 여기서 그대로 튀어나오면 테스트 자체가 실패한다
+
+    out = capsys.readouterr().out
+    assert "Undefined variable" in out
+    assert "[DEBUG] 실행 종료" in out
+
+
 def test_step16_run_debug_step_executes_one_statement_at_a_time(monkeypatch, tmp_path, capsys):
     """step 명령마다 Stmt 하나씩 실행되어야 한다 (print 문이 하나씩 출력됨)."""
     script = tmp_path / "script.txt"
