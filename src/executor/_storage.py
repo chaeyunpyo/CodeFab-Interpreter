@@ -73,8 +73,10 @@ class Storage:
         """현재(가장 안쪽) 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.
 
         디버그 모드의 inspect 명령용 (PDF: "현재 스코프의 모든 변수와 값 출력").
+        내장 함수(LoxCallable)는 사용자 변수가 아니므로 제외한다.
         """
-        return dict(self._scopes[-1])
+        from ._callable import LoxCallable
+        return {k: v for k, v in self._scopes[-1].items() if not isinstance(v, LoxCallable)}
 
     # ── 스코프 관리 ───────────────────────────────────────────────────────────
 
