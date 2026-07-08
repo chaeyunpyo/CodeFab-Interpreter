@@ -6,8 +6,8 @@ Expr 내부에 Stmt를 Child로 두는 것은 허용하지 않는다. (PDF p.31,
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, List
 
 from .ast_node import AstNode
 from .tokens import Token
@@ -74,3 +74,16 @@ class GroupingExpr(Expr):
     """괄호로 묶인 표현식. 예: (a + b) (PDF p.41)"""
 
     expression: Expr
+
+
+@dataclass
+class CallExpr(Expr):
+    """함수 호출 표현식. 예: add(1, 2) (요구사항_정리/function.md)
+
+    callee는 호출 대상(보통 VariableExpr), paren은 오류 위치(줄 번호)
+    표시용으로 호출의 여는 괄호 토큰을 담는다.
+    """
+
+    callee: Expr
+    paren: Token
+    arguments: List[Expr] = field(default_factory=list)

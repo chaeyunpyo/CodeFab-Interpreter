@@ -2,6 +2,7 @@ from .ast_node import *
 from .expr import (
     AssignExpr,
     BinaryExpr,
+    CallExpr,
     Expr,
     GroupingExpr,
     LiteralExpr,
@@ -13,8 +14,10 @@ from .stmt import (
     BlockStmt,
     ExpressionStmt,
     ForStmt,
+    FunctionStmt,
     IfStmt,
     PrintStmt,
+    ReturnStmt,
     Stmt,
     VarDeclStmt,
 )
@@ -28,6 +31,7 @@ __all__ = [
     "BinaryExpr",
     "LogicalExpr",
     "GroupingExpr",
+    "CallExpr",
     "Stmt",
     "ExpressionStmt",
     "PrintStmt",
@@ -35,4 +39,6 @@ __all__ = [
     "BlockStmt",
     "IfStmt",
     "ForStmt",
+    "FunctionStmt",
+    "ReturnStmt",
 ]
