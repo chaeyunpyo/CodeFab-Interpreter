@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from nodes.expr import Expr, LiteralExpr, SuperExpr, ThisExpr, VariableExpr
+from nodes.expr import Expr, SuperExpr, ThisExpr, VariableExpr
 from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ImportStmt, ReturnStmt, VarDeclStmt
 from source_error import SourceError
 
@@ -85,12 +85,11 @@ class ScopeChecker:
 
     def check_import(self, statement):
         """import문 하나를 검사한다. 같은 파일 재import와 alias 이름 충돌을 잡는다."""
-        path = statement.path.value if isinstance(statement.path, LiteralExpr) else None
-        if path is not None:
-            if path in self.imported_paths:
-                self._record_error("Already imported this file in this scope.", statement.keyword)
-            else:
-                self.imported_paths.append(path)
+        path = statement.path.literal
+        if path in self.imported_paths:
+            self._record_error("Already imported this file in this scope.", statement.keyword)
+        else:
+            self.imported_paths.append(path)
 
         self.declare_name(statement.alias.lexeme, statement.alias)
 

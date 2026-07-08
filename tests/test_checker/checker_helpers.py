@@ -1,4 +1,4 @@
-from nodes.expr import LiteralExpr, SuperExpr, ThisExpr
+from nodes.expr import SuperExpr, ThisExpr
 from nodes.stmt import ClassStmt, FunctionStmt, ImportStmt, VarDeclStmt
 from nodes.tokens import Token
 from nodes.token_type import TokenType
@@ -39,6 +39,6 @@ def make_super(method="move"):
 def make_import(path="a.txt", alias="a"):
     return ImportStmt(
         keyword=Token(TokenType.IMPORT, "import"),
-        path=LiteralExpr(path),
+        path=Token(TokenType.STRING, f'"{path}"', literal=path),
         alias=Token(TokenType.IDENTIFIER, alias),
     )

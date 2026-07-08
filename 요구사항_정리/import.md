@@ -6,7 +6,7 @@
 
 | 클래스 | 필드 | 설명 | 예시 |
 | --- | --- | --- | --- |
-| `ImportStmt` | `keyword: Token`, `path: Expr`, `alias: Token` | import문. path는 파일 경로 자리의 Expr(문자열 리터럴만 허용, 보통 LiteralExpr) | `import "sum.txt" alias sum;` |
+| `ImportStmt` | `keyword: Token`, `path: Token`, `alias: Token` | import문. path는 경로 자리에 항상 문자열 리터럴만 허용되므로 STRING 토큰이고, path.literal이 실제 경로 문자열 | `import "sum.txt" alias sum;` |
 
 ## 구현해야 할 기능
 
