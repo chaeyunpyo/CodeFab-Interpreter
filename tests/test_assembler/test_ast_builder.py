@@ -3837,3 +3837,664 @@ def test_step21_import_missing_semicolon_raises_missing_token_error():
 
     assert "Expected ';' after import statement" in str(excinfo.value)
     assert excinfo.value.token == Token(TokenType.EOF, "")
+
+
+# --- 22단계: instanceof 연산자 파싱 (요구사항_정리/class.md) ---
+#
+# instanceof는 비교 연산자와 같은 우선순위 단계에 있지만, 우변이 climb된
+# 표현식이 아니라 클래스 이름 하나(IDENTIFIER)라는 점이 다르다. 그래서
+# _climb()의 기본 처리 대신 _infix_factories에 등록된 전용 조립 방법
+# (_finish_instanceof)을 거친다.
+
+def test_step22_instanceof_basic():
+    """소스코드: w instanceof Robot;"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=InstanceOfExpr(
+                object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+            )
+        )
+    ]
+
+
+def test_step22_instanceof_used_as_if_condition():
+    """소스코드: if (w instanceof Robot) { print w; }"""
+    tokens = [
+        Token(TokenType.IF, "if"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.PRINT, "print"),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        IfStmt(
+            condition=InstanceOfExpr(
+                object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+            ),
+            then_branch=BlockStmt(
+                statements=[PrintStmt(expression=VariableExpr(Token(TokenType.IDENTIFIER, "w")))]
+            ),
+            else_branch=None,
+        )
+    ]
+
+
+def test_step22_instanceof_binds_tighter_than_and():
+    """소스코드: w instanceof Robot and w.speed > 0;
+
+    instanceof는 비교 연산자와 같은 단계(and보다 우선순위가 높음)라
+    LogicalExpr의 left/right 각각이 InstanceOfExpr/BinaryExpr로 먼저
+    묶이고, 그 다음에 and가 둘을 묶어야 한다.
+    """
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.AND, "and"),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.DOT, "."),
+        Token(TokenType.IDENTIFIER, "speed"),
+        Token(TokenType.GREATER, ">"),
+        Token(TokenType.NUMBER, "0", literal=0.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=LogicalExpr(
+                left=InstanceOfExpr(
+                    object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                    keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                    class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+                ),
+                operator=Token(TokenType.AND, "and"),
+                right=BinaryExpr(
+                    left=FieldGetExpr(
+                        object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                        name=Token(TokenType.IDENTIFIER, "speed"),
+                    ),
+                    operator=Token(TokenType.GREATER, ">"),
+                    right=LiteralExpr(0.0),
+                ),
+            )
+        )
+    ]
+
+
+def test_step22_instanceof_negated_with_grouping_and_unary_bang():
+    """소스코드: !(w instanceof Robot);"""
+    tokens = [
+        Token(TokenType.BANG, "!"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=UnaryExpr(
+                operator=Token(TokenType.BANG, "!"),
+                right=GroupingExpr(
+                    expression=InstanceOfExpr(
+                        object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                        keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                        class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+                    )
+                ),
+            )
+        )
+    ]
+
+
+def test_step22_instanceof_missing_class_name_raises_missing_token_error():
+    """소스코드: w instanceof;  (클래스 이름 누락)"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(MissingTokenError) as excinfo:
+        builder.build()
+
+    assert "Expected class name after 'instanceof'" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.SEMICOLON, ";")
+
+
+def test_step22_instanceof_class_name_not_identifier_raises_missing_token_error():
+    """소스코드: w instanceof 5;  (클래스 이름 자리에 식별자가 아닌 값)"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.NUMBER, "5", literal=5.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(MissingTokenError) as excinfo:
+        builder.build()
+
+    assert "Expected class name after 'instanceof'" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.NUMBER, "5", literal=5.0)
+
+
+def test_step22_instanceof_truncated_raises_missing_token_error():
+    """소스코드: w instanceof  (클래스 이름 없이 곧바로 끝남)"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(MissingTokenError) as excinfo:
+        builder.build()
+
+    assert "Expected class name after 'instanceof'" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.EOF, "")
+
+
+def test_step22_instanceof_with_literal_left_operand_still_parses():
+    """소스코드: 5 instanceof SpeedRobot;
+
+    좌변이 인스턴스가 아닌 값(숫자 리터럴)이어도 AstBuilder는 문법
+    구조만 보고 그대로 InstanceOfExpr로 조립해야 한다. 좌변이 실제
+    인스턴스인지, 어떤 클래스와 비교되는지는 실행 시점에만 확정되는
+    값 검사라 Checker/Executor 몫이지 AstBuilder가 거를 대상이 아니다.
+    """
+    tokens = [
+        Token(TokenType.NUMBER, "5", literal=5.0),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "SpeedRobot"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=InstanceOfExpr(
+                object=LiteralExpr(5.0),
+                keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                class_name=VariableExpr(Token(TokenType.IDENTIFIER, "SpeedRobot")),
+            )
+        )
+    ]
+
+
+def test_step22_instanceof_reserved_keyword_as_class_name_raises_missing_token_error():
+    """소스코드: w instanceof var;  (클래스 이름 자리에 예약어를 사용)
+
+    'var'는 키워드 토큰(VAR)으로 토큰화되어 IDENTIFIER가 아니므로,
+    변수/별칭 이름 자리와 마찬가지로 클래스 이름 자리에도 쓸 수 없다.
+    """
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(MissingTokenError) as excinfo:
+        builder.build()
+
+    assert "Expected class name after 'instanceof'" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.VAR, "var")
+
+
+def test_step22_instanceof_qualified_class_name_raises_missing_token_error():
+    """소스코드: w instanceof Robot.Sub;  (점으로 이어진 이름은 지원하지 않음)
+
+    클래스 이름 자리는 IDENTIFIER 하나만 소비하므로, `Robot`까지만
+    class_name으로 먹고 뒤에 남은 `.Sub`는 instanceof 파싱이 끝난
+    뒤에도 그대로 남는다. 그 뒤 문장이 세미콜론을 기대하는 자리에서
+    `.`을 만나 실패해야 한다.
+    """
+    tokens = [
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.DOT, "."),
+        Token(TokenType.IDENTIFIER, "Sub"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(MissingTokenError) as excinfo:
+        builder.build()
+
+    assert "Expected ';' after expression" in str(excinfo.value)
+    assert excinfo.value.token == Token(TokenType.DOT, ".")
+
+
+def test_step22_instanceof_without_left_operand_raises_unexpected_token_error():
+    """소스코드: instanceof Robot;  (좌변 없이 instanceof로 문장이 시작됨)
+
+    instanceof는 primary()가 인식하는 시작 토큰이 아니므로, 표현식을
+    시작할 수 없는 토큰으로 처리되어 UnexpectedTokenError가 나야 한다.
+    """
+    tokens = [
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    with pytest.raises(UnexpectedTokenError) as excinfo:
+        builder.build()
+
+    assert "Unexpected token" in str(excinfo.value)
+
+
+# --- 23단계: instanceof 통합 시나리오 ---
+#
+# instanceof를 실제로 쓸 법한 맥락(함수 파라미터 타입 분기, 배열 순회
+# 중 필터링, 다단계 상속, 메서드 안의 this, 함수 인자로 바로 전달)에
+# 끼워 넣었을 때도 지금까지 만든 다른 문법들과 자연스럽게 조립되는지
+# 확인한다.
+
+def test_step23_function_dispatches_by_instanceof_chain():
+    """소스코드:
+    Func describe(w) {
+        if (w instanceof SpeedRobot) { return "fast"; }
+        if (w instanceof Robot) { return "normal"; }
+        return "unknown";
+    }
+    """
+    tokens = [
+        Token(TokenType.FUNC, "Func"),
+        Token(TokenType.IDENTIFIER, "describe"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.IF, "if"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "SpeedRobot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RETURN, "return"),
+        Token(TokenType.STRING, '"fast"', literal="fast"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.IF, "if"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RETURN, "return"),
+        Token(TokenType.STRING, '"normal"', literal="normal"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.RETURN, "return"),
+        Token(TokenType.STRING, '"unknown"', literal="unknown"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    def instanceof_check(class_name):
+        return InstanceOfExpr(
+            object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+            keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+            class_name=VariableExpr(Token(TokenType.IDENTIFIER, class_name)),
+        )
+
+    assert builder.build() == [
+        FunctionStmt(
+            name=Token(TokenType.IDENTIFIER, "describe"),
+            params=[Token(TokenType.IDENTIFIER, "w")],
+            body=[
+                IfStmt(
+                    condition=instanceof_check("SpeedRobot"),
+                    then_branch=BlockStmt(
+                        statements=[
+                            ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr("fast"))
+                        ]
+                    ),
+                    else_branch=None,
+                ),
+                IfStmt(
+                    condition=instanceof_check("Robot"),
+                    then_branch=BlockStmt(
+                        statements=[
+                            ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr("normal"))
+                        ]
+                    ),
+                    else_branch=None,
+                ),
+                ReturnStmt(keyword=Token(TokenType.RETURN, "return"), value=LiteralExpr("unknown")),
+            ],
+        )
+    ]
+
+
+def test_step23_function_counts_array_elements_matching_instanceof():
+    """소스코드:
+    Func countRobots(items) {
+        var count = 0;
+        var i = 0;
+        for (i = 0; i < 3; i = i + 1) {
+            if (items[i] instanceof Robot) {
+                count = count + 1;
+            }
+        }
+        return count;
+    }
+    """
+    tokens = [
+        Token(TokenType.FUNC, "Func"),
+        Token(TokenType.IDENTIFIER, "countRobots"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "items"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.IDENTIFIER, "count"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "0", literal=0.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "0", literal=0.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.FOR, "for"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.NUMBER, "0", literal=0.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.LESS, "<"),
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.PLUS, "+"),
+        Token(TokenType.NUMBER, "1", literal=1.0),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.IF, "if"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "items"),
+        Token(TokenType.LEFT_BRACKET, "["),
+        Token(TokenType.IDENTIFIER, "i"),
+        Token(TokenType.RIGHT_BRACKET, "]"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.IDENTIFIER, "count"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.IDENTIFIER, "count"),
+        Token(TokenType.PLUS, "+"),
+        Token(TokenType.NUMBER, "1", literal=1.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.RETURN, "return"),
+        Token(TokenType.IDENTIFIER, "count"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        FunctionStmt(
+            name=Token(TokenType.IDENTIFIER, "countRobots"),
+            params=[Token(TokenType.IDENTIFIER, "items")],
+            body=[
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "count"), initializer=LiteralExpr(0.0)),
+                VarDeclStmt(name=Token(TokenType.IDENTIFIER, "i"), initializer=LiteralExpr(0.0)),
+                ForStmt(
+                    initializer=ExpressionStmt(
+                        expression=AssignExpr(name=Token(TokenType.IDENTIFIER, "i"), value=LiteralExpr(0.0))
+                    ),
+                    condition=BinaryExpr(
+                        left=VariableExpr(Token(TokenType.IDENTIFIER, "i")),
+                        operator=Token(TokenType.LESS, "<"),
+                        right=LiteralExpr(3.0),
+                    ),
+                    increment=AssignExpr(
+                        name=Token(TokenType.IDENTIFIER, "i"),
+                        value=BinaryExpr(
+                            left=VariableExpr(Token(TokenType.IDENTIFIER, "i")),
+                            operator=Token(TokenType.PLUS, "+"),
+                            right=LiteralExpr(1.0),
+                        ),
+                    ),
+                    body=BlockStmt(
+                        statements=[
+                            IfStmt(
+                                condition=InstanceOfExpr(
+                                    object=IndexGetExpr(
+                                        object=VariableExpr(Token(TokenType.IDENTIFIER, "items")),
+                                        bracket=Token(TokenType.LEFT_BRACKET, "["),
+                                        index=VariableExpr(Token(TokenType.IDENTIFIER, "i")),
+                                    ),
+                                    keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                                    class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+                                ),
+                                then_branch=BlockStmt(
+                                    statements=[
+                                        ExpressionStmt(
+                                            expression=AssignExpr(
+                                                name=Token(TokenType.IDENTIFIER, "count"),
+                                                value=BinaryExpr(
+                                                    left=VariableExpr(Token(TokenType.IDENTIFIER, "count")),
+                                                    operator=Token(TokenType.PLUS, "+"),
+                                                    right=LiteralExpr(1.0),
+                                                ),
+                                            )
+                                        )
+                                    ]
+                                ),
+                                else_branch=None,
+                            )
+                        ]
+                    ),
+                ),
+                ReturnStmt(
+                    keyword=Token(TokenType.RETURN, "return"),
+                    value=VariableExpr(Token(TokenType.IDENTIFIER, "count")),
+                ),
+            ],
+        )
+    ]
+
+
+def test_step23_instanceof_checks_ancestor_across_three_level_inheritance():
+    """소스코드:
+    Class Animal { }
+    Class Dog : Animal { }
+    Class Puppy : Dog { }
+
+    var p = Puppy();
+    print p instanceof Animal;
+
+    직계 부모가 아니라 조상(Animal)과의 instanceof도 AstBuilder
+    입장에서는 동일한 문법이라 상속 단계 수와 무관하게 그대로
+    파싱되어야 한다 (실제 조상 판정은 Executor의 상속 체인 탐색 몫).
+    """
+    tokens = [
+        Token(TokenType.CLASS, "Class"),
+        Token(TokenType.IDENTIFIER, "Animal"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.CLASS, "Class"),
+        Token(TokenType.IDENTIFIER, "Dog"),
+        Token(TokenType.COLON, ":"),
+        Token(TokenType.IDENTIFIER, "Animal"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.CLASS, "Class"),
+        Token(TokenType.IDENTIFIER, "Puppy"),
+        Token(TokenType.COLON, ":"),
+        Token(TokenType.IDENTIFIER, "Dog"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.VAR, "var"),
+        Token(TokenType.IDENTIFIER, "p"),
+        Token(TokenType.EQUAL, "="),
+        Token(TokenType.IDENTIFIER, "Puppy"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.PRINT, "print"),
+        Token(TokenType.IDENTIFIER, "p"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Animal"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ClassStmt(name=Token(TokenType.IDENTIFIER, "Animal"), superclass=None, methods=[]),
+        ClassStmt(
+            name=Token(TokenType.IDENTIFIER, "Dog"),
+            superclass=VariableExpr(Token(TokenType.IDENTIFIER, "Animal")),
+            methods=[],
+        ),
+        ClassStmt(
+            name=Token(TokenType.IDENTIFIER, "Puppy"),
+            superclass=VariableExpr(Token(TokenType.IDENTIFIER, "Dog")),
+            methods=[],
+        ),
+        VarDeclStmt(
+            name=Token(TokenType.IDENTIFIER, "p"),
+            initializer=CallExpr(
+                callee=VariableExpr(Token(TokenType.IDENTIFIER, "Puppy")),
+                paren=Token(TokenType.LEFT_PAREN, "("),
+                arguments=[],
+            ),
+        ),
+        PrintStmt(
+            expression=InstanceOfExpr(
+                object=VariableExpr(Token(TokenType.IDENTIFIER, "p")),
+                keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Animal")),
+            )
+        ),
+    ]
+
+
+def test_step23_class_method_checks_this_instanceof():
+    """소스코드: Class Shape { isCircle() { return this instanceof Circle; } }"""
+    tokens = [
+        Token(TokenType.CLASS, "Class"),
+        Token(TokenType.IDENTIFIER, "Shape"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.IDENTIFIER, "isCircle"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.LEFT_BRACE, "{"),
+        Token(TokenType.RETURN, "return"),
+        Token(TokenType.THIS, "this"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Circle"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.RIGHT_BRACE, "}"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        ClassStmt(
+            name=Token(TokenType.IDENTIFIER, "Shape"),
+            superclass=None,
+            methods=[
+                FunctionStmt(
+                    name=Token(TokenType.IDENTIFIER, "isCircle"),
+                    params=[],
+                    body=[
+                        ReturnStmt(
+                            keyword=Token(TokenType.RETURN, "return"),
+                            value=InstanceOfExpr(
+                                object=ThisExpr(keyword=Token(TokenType.THIS, "this")),
+                                keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                                class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Circle")),
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+    ]
+
+
+def test_step23_instanceof_result_passed_as_call_argument():
+    """소스코드: print report(w instanceof Robot);"""
+    tokens = [
+        Token(TokenType.PRINT, "print"),
+        Token(TokenType.IDENTIFIER, "report"),
+        Token(TokenType.LEFT_PAREN, "("),
+        Token(TokenType.IDENTIFIER, "w"),
+        Token(TokenType.INSTANCEOF, "instanceof"),
+        Token(TokenType.IDENTIFIER, "Robot"),
+        Token(TokenType.RIGHT_PAREN, ")"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [
+        PrintStmt(
+            expression=CallExpr(
+                callee=VariableExpr(Token(TokenType.IDENTIFIER, "report")),
+                paren=Token(TokenType.LEFT_PAREN, "("),
+                arguments=[
+                    InstanceOfExpr(
+                        object=VariableExpr(Token(TokenType.IDENTIFIER, "w")),
+                        keyword=Token(TokenType.INSTANCEOF, "instanceof"),
+                        class_name=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+                    )
+                ],
+            )
+        )
+    ]
