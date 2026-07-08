@@ -274,14 +274,15 @@ def test_step15_main_run_command_without_path_shows_usage(capsys):
     assert capsys.readouterr().out != ""
 
 
-def test_step15_main_debug_command_calls_run_debug(tmp_path, capsys):
-    """factory debug <파일>은 (아직 자리표시자인) 디버그 모드로 진입해야 한다."""
+def test_step15_main_debug_command_enters_debug_repl(monkeypatch, tmp_path, capsys):
+    """factory debug <파일>은 디버그 모드로 진입해서 명령을 받아야 한다."""
     script = tmp_path / "script.txt"
-    script.write_text("print 1;\n", encoding="utf-8")
+    script.write_text("var a = 1;\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda prompt="": "exit")
 
     main(["debug", str(script)])
 
-    assert str(script) in capsys.readouterr().out
+    assert "Line 1" in capsys.readouterr().out
 
 
 def test_step15_main_unknown_command_shows_usage_without_crashing(capsys):
@@ -290,10 +291,67 @@ def test_step15_main_unknown_command_shows_usage_without_crashing(capsys):
 
     assert capsys.readouterr().out != ""
 
-# --- 16단계: run_debug() - 디버그 모드 자리표시자 (step/next/break/watch는 추후 구현) ---
+# --- 16단계: run_debug() - 디버그 모드 REPL (step/next/continue/break/watch/inspect) ---
 
-def test_step16_run_debug_is_a_placeholder(capsys):
-    """아직 미구현이라는 것을 명확히 알리고, 크래시하지 않아야 한다."""
-    run_debug("aaa.txt")
+def test_step16_run_debug_reports_missing_file_without_crashing(capsys):
+    """존재하지 않는 파일을 주면 크래시 없이 메시지만 출력해야 한다."""
+    run_debug("이런_파일은_없다.ez")
 
-    assert "aaa.txt" in capsys.readouterr().out
+    assert capsys.readouterr().out != ""
+
+
+def test_step16_run_debug_step_executes_one_statement_at_a_time(monkeypatch, tmp_path, capsys):
+    """step 명령마다 Stmt 하나씩 실행되어야 한다 (print 문이 하나씩 출력됨)."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\nprint 2;\n", encoding="utf-8")
+    inputs = iter(["step", "step", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "1\n" in out
+    assert "2\n" in out
+
+
+def test_step16_run_debug_watch_prints_variable_value_after_each_step(monkeypatch, tmp_path, capsys):
+    """watch로 등록한 변수는 정지할 때마다 자동으로 값이 출력되어야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("var a = 1;\na = a + 1;\n", encoding="utf-8")
+    inputs = iter(["watch a", "step", "step", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "a = 2.0" in out
+
+
+def test_step16_run_debug_break_and_continue_stops_at_breakpoint(monkeypatch, tmp_path, capsys):
+    """break <줄번호> 이후 continue는 해당 줄 직전에서 멈춰야 한다."""
+    # print 1; 처럼 리터럴만 있는 문장은 Token이 안 남아 line을 못 찾으므로(_find_line 참고),
+    # 변수 참조(print a;)가 있는 문장으로 줄 번호를 검증한다.
+    script = tmp_path / "script.txt"
+    script.write_text("var a = 1;\nprint a;\nprint a;\n", encoding="utf-8")
+    inputs = iter(["break 3", "continue", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert out.count("1\n") == 1  # 2번째 줄까지만 실행되고 3번째 줄 직전에 멈췄다
+    assert "Line 3" in out
+
+
+def test_step16_run_debug_inspect_prints_current_scope_variables(monkeypatch, tmp_path, capsys):
+    """inspect는 현재 스코프의 모든 변수와 값을 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("var a = 1;\nvar b = 2;\n", encoding="utf-8")
+    inputs = iter(["step", "step", "inspect", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "a = 1.0" in out
+    assert "b = 2.0" in out

@@ -1,8 +1,11 @@
 import sys
 
-from assembler import AstBuilder, Tokenizer, UnexpectedTokenError
+from assembler import Assembler, AssemblerError, AstBuilder, Tokenizer, UnexpectedTokenError
+from checker import CheckerUnit
 from nodes.token_type import TokenType
 from pipeline import Pipeline
+
+from ._debugger import Debugger
 
 
 class PromptShell:
@@ -98,9 +101,103 @@ def run_file(path: str) -> None:
 def run_debug(path: str) -> None:
     """Stmt 단위 stepping/breakpoint/watch를 지원하는 디버그 모드 진입점.
 
-    아직 구현되지 않았다 (자리표시자).
+    파일을 파싱한 뒤 정지시킨 상태로 시작하고, step/next/continue/break/watch/inspect
+    명령을 받아가며 한 Stmt씩 실행 상태를 점검한다.
     """
-    print(f"디버그 모드는 아직 구현되지 않았습니다: {path}")
+    try:
+        with open(path, encoding="utf-8") as f:
+            source = f.read()
+    except OSError as error:
+        print(f"파일을 열 수 없습니다: {error}")
+        return
+
+    assembler = Assembler(source)
+    try:
+        assembler.execute()
+    except AssemblerError as error:
+        print(error)
+        return
+
+    checker_errors = CheckerUnit(assembler.ast).check()
+    if checker_errors:
+        for error in checker_errors:
+            print(error)
+        return
+
+    _debug_repl(Debugger(assembler.ast))
+
+
+def _debug_repl(debugger: Debugger) -> None:
+    _print_debugger_status(debugger)
+    while True:
+        try:
+            command = input("(debug) ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if command in ("exit", "quit"):
+            return
+
+        _handle_debug_command(debugger, command)
+
+
+def _handle_debug_command(debugger: Debugger, command: str) -> None:
+    name, _, arg = command.partition(" ")
+    arg = arg.strip()
+
+    if name == "step":
+        debugger.step()
+        _print_debugger_status(debugger)
+    elif name == "next":
+        debugger.next()
+        _print_debugger_status(debugger)
+    elif name == "continue":
+        debugger.continue_()
+        _print_debugger_status(debugger)
+    elif name == "break":
+        _with_line_number(arg, "break <줄번호>", debugger.add_breakpoint)
+    elif name == "remove":
+        _with_line_number(arg, "remove <줄번호>", debugger.remove_breakpoint)
+    elif name == "breakpoints":
+        print(sorted(debugger.breakpoints))
+    elif name == "watch":
+        debugger.watch(arg)
+    elif name == "unwatch":
+        debugger.unwatch(arg)
+    elif name == "watches":
+        _print_variables(debugger.watched_values())
+    elif name == "inspect":
+        _print_variables(debugger.inspect())
+    else:
+        print(f"알 수 없는 명령입니다: {command}")
+
+
+def _with_line_number(arg: str, usage: str, handler) -> None:
+    try:
+        line = int(arg)
+    except ValueError:
+        print(f"사용법: {usage}")
+        return
+    handler(line)
+
+
+def _print_debugger_status(debugger: Debugger) -> None:
+    if debugger.finished:
+        print("(실행 종료)")
+    else:
+        print(f"-> Line {debugger.current_line}: {type(debugger.current_stmt).__name__}")
+
+    if debugger.watches:
+        _print_variables(debugger.watched_values())
+
+
+def _print_variables(variables) -> None:
+    if not variables:
+        print("  (없음)")
+        return
+    for name, value in variables.items():
+        print(f"  {name} = {value}")
 
 
 def main(args=None) -> None:
