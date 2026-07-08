@@ -9,6 +9,7 @@ Public API:
     storage.exists(name)         - 변수 존재 여부 확인
     storage.push_scope()         - 새 블록 스코프 진입 (BlockStmt 진입 시)
     storage.pop_scope()          - 현재 블록 스코프 종료 (BlockStmt 종료 시)
+    storage.current_scope_items() - 현재(가장 안쪽) 스코프의 변수 목록 조회 (디버그 모드 inspect 용)
 """
 
 from typing import Any, Dict, List
@@ -62,6 +63,13 @@ class Storage:
     def exists(self, name: str) -> bool:
         """스코프 체인 어딘가에 변수가 정의되어 있으면 True를 반환한다."""
         return any(name in scope for scope in self._scopes)
+
+    def current_scope_items(self) -> Dict[str, Any]:
+        """현재(가장 안쪽) 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.
+
+        디버그 모드의 inspect 명령용 (PDF: "현재 스코프의 모든 변수와 값 출력").
+        """
+        return dict(self._scopes[-1])
 
     # ── 스코프 관리 ───────────────────────────────────────────────────────────
 
