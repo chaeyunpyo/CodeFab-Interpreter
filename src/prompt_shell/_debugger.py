@@ -73,9 +73,9 @@ class Debugger:
     def continue_(self):
         """다음 breakpoint를 만날 때까지(또는 끝날 때까지) 실행한다."""
         while not self.finished:
-            self.step()
-            if self.finished or self.current_line in self.breakpoints:
+            if self.current_line in self.breakpoints:
                 return
+            self.step()
 
     def _advance(self):
         try:
