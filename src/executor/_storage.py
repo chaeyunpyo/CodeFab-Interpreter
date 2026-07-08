@@ -75,8 +75,10 @@ class Storage:
         """현재(가장 안쪽) 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.
 
         디버그 모드의 inspect 명령용 (PDF: "현재 스코프의 모든 변수와 값 출력").
+        내장 함수(LoxCallable)는 사용자 변수가 아니므로 제외한다.
         """
-        return dict(self._scopes[-1])
+        from ._callable import LoxCallable
+        return {k: v for k, v in self._scopes[-1].items() if not isinstance(v, LoxCallable)}
 
     def global_scope_items(self) -> Dict[str, Any]:
         """전역 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.
@@ -117,7 +119,7 @@ class Storage:
         그 위에 새 프레임(파라미터용 스코프)을 하나 쌓는다.
         """
         self._call_stack.append(self._scopes)
-        self._scopes = [self._scopes[0], {}]
+        self._scopes = [dict(self._scopes[0]), {}]
 
     def pop_call_frame(self) -> None:
         """함수 호출을 종료하고 호출부의 스코프 체인을 복원한다."""

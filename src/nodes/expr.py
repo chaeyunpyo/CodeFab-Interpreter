@@ -106,6 +106,32 @@ class SuperExpr(Expr):
 
     keyword: Token
     method: Token
+
+
+@dataclass
+class FieldGetExpr(Expr):
+    """필드 읽기 표현식. 예: r.speed (요구사항_정리/class.md)
+
+    object는 필드 접근 대상(보통 VariableExpr/ThisExpr), name은 필드 이름 토큰이다.
+    """
+
+    object: Expr
+    name: Token
+
+
+@dataclass
+class FieldSetExpr(Expr):
+    """필드 쓰기 표현식. 예: r.speed = 10 (요구사항_정리/class.md)
+
+    object/name은 FieldGetExpr과 동일하고, value가 대입할 값이다.
+    """
+
+    object: Expr
+    name: Token
+    value: Expr
+
+
+@dataclass
 class IndexGetExpr(Expr):
     """배열 인덱스 읽기 표현식. 예: arr[0] (요구사항_정리/정적배열.md)
 

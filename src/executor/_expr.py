@@ -17,7 +17,7 @@ from nodes import (
 from nodes.token_type import TokenType
 from ._storage import Storage
 from ._callable import LoxCallable
-from ._array import FabArray
+from ._array import FabArray, _parse_integer_value
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
@@ -154,42 +154,38 @@ def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
 
 def _check_integer_index(value: Any, token) -> int:
     """배열 인덱스 값이 정수 숫자인지 검사하고 int로 변환한다."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise InvalidIndexTypeError(
-            f"인덱스는 숫자여야 합니다. (받은 값: {value!r})", token
+    return _parse_integer_value(value, "인덱스", InvalidIndexTypeError, token)
+
+
+def _resolve_array_access(obj: Any, idx_val: Any, bracket) -> tuple:
+    """배열 타입·인덱스 타입·범위를 한 번에 검사하고 (FabArray, int)를 반환한다."""
+    if not isinstance(obj, FabArray):
+        raise NotAnArrayError(
+            f"[] 연산은 배열에만 사용할 수 있습니다. (받은 값: {obj!r})", bracket
         )
-    if isinstance(value, float) and not value.is_integer():
-        raise InvalidIndexTypeError(
-            f"인덱스는 정수여야 합니다. (받은 값: {value})", token
+    idx = _check_integer_index(idx_val, bracket)
+    if idx < 0 or idx >= len(obj):
+        raise IndexOutOfRangeError(
+            f"인덱스 {idx}는 배열 범위(0~{len(obj) - 1})를 벗어났습니다.", bracket
         )
-    return int(value)
+    return obj, idx
 
 
 def _evaluate_index_get(expr: IndexGetExpr, storage: Storage) -> Any:
-    obj = evaluate(expr.object, storage)
-    if not isinstance(obj, FabArray):
-        raise NotAnArrayError(
-            f"[] 연산은 배열에만 사용할 수 있습니다. (받은 값: {obj!r})", expr.bracket
-        )
-    idx = _check_integer_index(evaluate(expr.index, storage), expr.bracket)
-    if idx < 0 or idx >= len(obj):
-        raise IndexOutOfRangeError(
-            f"인덱스 {idx}는 배열 범위(0~{len(obj) - 1})를 벗어났습니다.", expr.bracket
-        )
+    obj, idx = _resolve_array_access(
+        evaluate(expr.object, storage),
+        evaluate(expr.index, storage),
+        expr.bracket,
+    )
     return obj.get(idx)
 
 
 def _evaluate_index_set(expr: IndexSetExpr, storage: Storage) -> Any:
-    obj = evaluate(expr.object, storage)
-    if not isinstance(obj, FabArray):
-        raise NotAnArrayError(
-            f"[] 연산은 배열에만 사용할 수 있습니다. (받은 값: {obj!r})", expr.bracket
-        )
-    idx = _check_integer_index(evaluate(expr.index, storage), expr.bracket)
-    if idx < 0 or idx >= len(obj):
-        raise IndexOutOfRangeError(
-            f"인덱스 {idx}는 배열 범위(0~{len(obj) - 1})를 벗어났습니다.", expr.bracket
-        )
+    obj, idx = _resolve_array_access(
+        evaluate(expr.object, storage),
+        evaluate(expr.index, storage),
+        expr.bracket,
+    )
     value = evaluate(expr.value, storage)
     obj.set(idx, value)
     return value

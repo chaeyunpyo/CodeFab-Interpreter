@@ -11,9 +11,12 @@
     inspect()          - (local_items, global_items) - 로컬/전역 스코프의 변수와 값
 """
 
-from executor import LoxCallable, Storage, evaluate, execute
-from nodes.stmt import BlockStmt, ForStmt, IfStmt
+import dataclasses
 
+from executor import LoxCallable, ExecutionError, Storage, evaluate, execute
+from nodes.ast_node import AstNode
+from nodes.stmt import BlockStmt, ForStmt, IfStmt
+from nodes.tokens import Token
 
 class Debugger:
     def __init__(self, statements):
@@ -73,6 +76,12 @@ class Debugger:
             self.current_line = None
             self._current_index = None
             return
+        except ExecutionError:
+            self.finished = True
+            self.current_stmt = None
+            self.current_line = None
+            self._current_index = None
+            raise
         self.current_stmt = stmt
         self.current_line = stmt.line
         self._current_index = index
