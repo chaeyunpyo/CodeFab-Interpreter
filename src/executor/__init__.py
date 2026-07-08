@@ -10,10 +10,15 @@ from .errors import (
     ArityMismatchError,
     DivideByZeroError,
     ExecutionError,
+    IndexOutOfRangeError,
+    InvalidArraySizeError,
+    InvalidIndexTypeError,
+    NotAnArrayError,
     NotCallableError,
     TypeMismatchError,
     UndefinedVariableError,
 )
+from ._array import FabArray
 from ._storage import Storage
 from ._signals import ReturnSignal
 from ._callable import LoxCallable
@@ -28,6 +33,11 @@ __all__ = [
     "UndefinedVariableError",
     "NotCallableError",
     "ArityMismatchError",
+    "IndexOutOfRangeError",
+    "InvalidIndexTypeError",
+    "NotAnArrayError",
+    "InvalidArraySizeError",
+    "FabArray",
     "ReturnSignal",
     "LoxCallable",
     "Function",

@@ -40,3 +40,19 @@ class ArityMismatchError(ExecutionError):
         super().__init__(f"Expected {expected} arguments but got {got}.", token)
         self.expected = expected
         self.got = got
+
+
+class IndexOutOfRangeError(ExecutionError):
+    """배열 크기를 벗어난 인덱스에 접근할 때. 예: arr[5] (배열 크기 3)"""
+
+
+class InvalidIndexTypeError(ExecutionError):
+    """인덱스가 숫자가 아닐 때. 예: arr["hello"]"""
+
+
+class NotAnArrayError(ExecutionError):
+    """배열이 아닌 값에 [] 연산을 사용할 때. 예: var x = 10; x[0]"""
+
+
+class InvalidArraySizeError(ExecutionError):
+    """Array() 생성 시 크기가 숫자가 아니거나 유효하지 않을 때. 예: Array("hi")"""

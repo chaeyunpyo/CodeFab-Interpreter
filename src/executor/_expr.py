@@ -7,6 +7,8 @@ from nodes import (
     CallExpr,
     Expr,
     GroupingExpr,
+    IndexGetExpr,
+    IndexSetExpr,
     LiteralExpr,
     LogicalExpr,
     UnaryExpr,
@@ -15,9 +17,13 @@ from nodes import (
 from nodes.token_type import TokenType
 from ._storage import Storage
 from ._callable import LoxCallable
+from ._array import FabArray
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
+    IndexOutOfRangeError,
+    InvalidIndexTypeError,
+    NotAnArrayError,
     NotCallableError,
     TypeMismatchError,
     UndefinedVariableError,
@@ -146,6 +152,49 @@ def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
     return callee.call(storage, arguments)
 
 
+def _check_integer_index(value: Any, token) -> int:
+    """배열 인덱스 값이 정수 숫자인지 검사하고 int로 변환한다."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise InvalidIndexTypeError(
+            f"인덱스는 숫자여야 합니다. (받은 값: {value!r})", token
+        )
+    if isinstance(value, float) and not value.is_integer():
+        raise InvalidIndexTypeError(
+            f"인덱스는 정수여야 합니다. (받은 값: {value})", token
+        )
+    return int(value)
+
+
+def _evaluate_index_get(expr: IndexGetExpr, storage: Storage) -> Any:
+    obj = evaluate(expr.object, storage)
+    if not isinstance(obj, FabArray):
+        raise NotAnArrayError(
+            f"[] 연산은 배열에만 사용할 수 있습니다. (받은 값: {obj!r})", expr.bracket
+        )
+    idx = _check_integer_index(evaluate(expr.index, storage), expr.bracket)
+    if idx < 0 or idx >= len(obj):
+        raise IndexOutOfRangeError(
+            f"인덱스 {idx}는 배열 범위(0~{len(obj) - 1})를 벗어났습니다.", expr.bracket
+        )
+    return obj.get(idx)
+
+
+def _evaluate_index_set(expr: IndexSetExpr, storage: Storage) -> Any:
+    obj = evaluate(expr.object, storage)
+    if not isinstance(obj, FabArray):
+        raise NotAnArrayError(
+            f"[] 연산은 배열에만 사용할 수 있습니다. (받은 값: {obj!r})", expr.bracket
+        )
+    idx = _check_integer_index(evaluate(expr.index, storage), expr.bracket)
+    if idx < 0 or idx >= len(obj):
+        raise IndexOutOfRangeError(
+            f"인덱스 {idx}는 배열 범위(0~{len(obj) - 1})를 벗어났습니다.", expr.bracket
+        )
+    value = evaluate(expr.value, storage)
+    obj.set(idx, value)
+    return value
+
+
 _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     LiteralExpr: _evaluate_literal,
     VariableExpr: _evaluate_variable,
@@ -155,6 +204,8 @@ _EXPR_EVALUATORS: Dict[Type[Expr], Callable[[Any, Storage], Any]] = {
     LogicalExpr: _evaluate_logical,
     BinaryExpr: _evaluate_binary,
     CallExpr: _evaluate_call,
+    IndexGetExpr: _evaluate_index_get,
+    IndexSetExpr: _evaluate_index_set,
 }
 
 
@@ -172,10 +223,15 @@ def stringify(value: Any) -> str:
     정수 값을 갖는 float(예: 5.0)은 "5.0"이 아닌 "5"로 표시한다.
     (PDF p.77 실행 예시 "print(5) 출력" 참고)
     """
+    if value is None:
+        return "null"
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, float):
         if value.is_integer():
             return str(int(value))
         return str(value)
+    if isinstance(value, FabArray):
+        items = ", ".join(stringify(value.get(i)) for i in range(len(value)))
+        return f"[{items}]"
     return str(value)
