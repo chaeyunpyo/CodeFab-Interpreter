@@ -24,3 +24,19 @@ class UndefinedVariableError(ExecutionError):
     def __init__(self, name: str, token: Optional[Token] = None):
         super().__init__(f"Undefined variable '{name}'", token)
         self.name = name
+
+
+class NotCallableError(ExecutionError):
+    """함수가 아닌 값을 호출하려고 할 때. 예: var x = "hello"; x(); (요구사항_정리/function.md)"""
+
+    def __init__(self, token: Optional[Token] = None):
+        super().__init__("Can only call functions.", token)
+
+
+class ArityMismatchError(ExecutionError):
+    """선언된 파라미터 수와 호출 인자 수가 다를 때. (요구사항_정리/function.md)"""
+
+    def __init__(self, expected: int, got: int, token: Optional[Token] = None):
+        super().__init__(f"Expected {expected} arguments but got {got}.", token)
+        self.expected = expected
+        self.got = got
