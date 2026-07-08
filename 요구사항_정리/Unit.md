@@ -79,11 +79,20 @@ Assembler, Checker, Executor가 만드는 오류는 전부 `source_error.SourceE
 
 ## Executor Unit이 검출하는 오류
 
-| 분류         | 예외 클래스                | 예시            |
-| ---------- | --------------------- | ------------- |
-| 타입 불일치     | `TypeMismatchError`   | `3 - "hello"` |
-| 0으로 나누기    | `DivideByZeroError`   | `3 / 0`       |
-| 정의되지 않은 변수 | `UndefinedVariableError` | `print x;` |
+| 분류               | 예외 클래스                | 예시                                       |
+| ---------------- | --------------------- | ---------------------------------------- |
+| 타입 불일치           | `TypeMismatchError`   | `3 - "hello"`                             |
+| 0으로 나누기          | `DivideByZeroError`   | `3 / 0`                                   |
+| 정의되지 않은 변수       | `UndefinedVariableError` | `print x;`                             |
+| 호출 불가 대상 호출      | `NotCallableError`    | `var x = "hello"; x();`                   |
+| 인자 개수 불일치        | `ArityMismatchError`  | `Func foo(a) { } foo(1, 2);`               |
+| 배열 인덱스 범위 초과     | `IndexOutOfRangeError` | `arr[5]` (배열 크기 3)                       |
+| 잘못된 인덱스 타입       | `InvalidIndexTypeError` | `arr["hello"]`                          |
+| 배열 아닌 대상 인덱싱     | `NotAnArrayError`     | `var x = 10; x[0]`                        |
+| 잘못된 배열 크기        | `InvalidArraySizeError` | `Array("hi")`                           |
+| 인스턴스 아닌 대상 필드 접근 | `NotAnInstanceError`  | `var x = 10; x.field`                     |
+| 존재하지 않는 필드/메서드   | `UndefinedPropertyError` | `print r.power;`                       |
+| 클래스가 아닌 대상 상속    | `NotAClassError`      | `var x = 10; Class Robot : x { ... }`     |
 
 모두 `src/executor/errors.py`에 정의되어 있고, `ExecutionError`(공통
 상위 타입)를 거쳐 `SourceError`를 상속한다.

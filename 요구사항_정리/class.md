@@ -6,9 +6,7 @@
 
 ## Node 정의
 
-기존 `nodes/stmt.py`, `nodes/expr.py`에 아래 타입을 추가한다 (this/super/
-자기상속/init-return 오류 검사에 필요한 만큼 우선 반영됨. 필드 접근용
-Get/SetExpr, instanceof용 Expr은 아직 없음).
+기존 `nodes/stmt.py`, `nodes/expr.py`에 아래 타입을 추가한다.
 
 **Stmt 추가**
 
@@ -22,6 +20,9 @@ Get/SetExpr, instanceof용 Expr은 아직 없음).
 | --- | --- | --- | --- |
 | `ThisExpr` | `keyword: Token` | 메서드 내부에서 자기 인스턴스를 가리킴 | `this.name` |
 | `SuperExpr` | `keyword: Token`, `method: Token` | 부모 클래스의 메서드를 가리킴 | `super.move` |
+| `FieldGetExpr` | `object: Expr`, `name: Token` | 필드 읽기 | `r.speed` |
+| `FieldSetExpr` | `object: Expr`, `name: Token`, `value: Expr` | 필드 쓰기 | `r.speed = 10` |
+| `InstanceOfExpr` | `object: Expr`, `keyword: Token`, `class_name: Expr` | 인스턴스가 특정 클래스(또는 조상)인지 확인. class_name은 이름 참조만 담고 실제 판정은 Executor 몫 | `w instanceof Robot` |
 
 ## 구현해야 할 기능
 
@@ -74,8 +75,17 @@ Get/SetExpr, instanceof용 Expr은 아직 없음).
 `init() { return; }`처럼 값 없는 조기 `return`은 허용된다 (생성자가 항상
 인스턴스를 반환한다는 원칙은 지키면서, 값을 반환하려는 시도만 막는다).
 
-나머지(필드/메서드/인스턴스 생성/상속 실행, instanceof, 런타임 오류 4개)는
-Assembler/Executor 쪽 구현이 필요해서 아직 미착수 상태다.
+필드/메서드/인스턴스 생성/상속 실행과 런타임 오류 4개는 Assembler/Executor
+쪽에 이미 구현되어 있다.
+
+| 항목 | 구현 |
+| --- | --- |
+| 클래스가 아닌 대상 상속 | `NotAClassError` |
+| 인스턴스가 아닌 대상의 필드 접근 | `NotAnInstanceError` |
+| 존재하지 않는 필드/메서드 접근·읽기 | `UndefinedPropertyError` |
+
+`instanceof` 연산자만 Node(`InstanceOfExpr`)만 있고 Assembler 파싱과
+Executor 평가가 아직 미착수 상태다.
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
@@ -94,7 +104,7 @@ Assembler/Executor 쪽 구현이 필요해서 아직 미착수 상태다.
 | 분류 | 개수 |
 | --- | -: |
 | Node (Stmt) | 1개 |
-| Node (Expr) | 2개 |
+| Node (Expr) | 5개 |
 | 클래스 선언/인스턴스 | 2개 |
 | 필드 | 3개 |
 | 메서드 | 4개 |
