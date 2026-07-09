@@ -35,6 +35,7 @@ from .errors import (
     NotAnArrayError,
     NotAnInstanceError,
     NotCallableError,
+    StackOverflowError,
     TypeMismatchError,
     UndefinedPropertyError,
     UndefinedVariableError,
@@ -180,6 +181,8 @@ def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
         if e.token is None:
             e.token = expr.paren
         raise
+    except RecursionError:
+        raise StackOverflowError(expr.paren) from None
 
 
 def _check_integer_index(value: Any, token) -> int:
