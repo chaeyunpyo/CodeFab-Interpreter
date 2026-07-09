@@ -40,14 +40,15 @@
 
 ## 구현 현황 (Checker)
 
-정적 오류 6개 중 Checker 담당 3개는 `src/checker.py`에 구현 완료됨
-(테스트: `tests/test_checker/test_checker_import.py`). 나머지 3개(import
-문법 오류, 파일 없음, 순환 import)는 Assembler 담당이라 여기 포함하지
-않는다.
+정적 오류 6개 중 Checker 담당 3개와 세부 규칙의 "상위 중복 import 금지"는
+`src/checker.py`에 구현 완료됨 (테스트: `tests/test_checker/test_checker_import.py`).
+나머지 3개(import 문법 오류, 파일 없음, 순환 import)는 Assembler 담당이라
+여기 포함하지 않는다.
 
 | 항목 | 구현된 메시지 |
 | --- | --- |
 | 같은 scope 내 중복 import | `Already imported this file in this scope.` |
+| 상위 level 중복 import 금지 | `Already imported this file in an enclosing scope.` |
 | alias name 충돌 | `Already a variable with this name in this scope.` |
 | 반복문 내 import문 호출 | `Can't use import statement inside a loop.` |
 

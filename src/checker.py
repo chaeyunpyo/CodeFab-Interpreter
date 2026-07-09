@@ -60,11 +60,12 @@ class ThisSuperFinder:
 class ScopeChecker:
     """블록 하나(스코프)의 변수 선언 오류를 검사한다."""
 
-    def __init__(self, expr_name_finder, errors):
+    def __init__(self, expr_name_finder, errors, parent=None):
         self.declared_names = []
         self.imported_paths = []
         self.expr_name_finder = expr_name_finder
         self.errors = errors
+        self.parent = parent
 
     def check_var_decl(self, statement):
         """변수 선언문(var a = ...;) 하나를 검사한다."""
@@ -88,10 +89,20 @@ class ScopeChecker:
         path = statement.path.literal
         if path in self.imported_paths:
             self._record_error("Already imported this file in this scope.", statement.keyword)
+        elif self._is_imported_in_ancestor(path):
+            self._record_error("Already imported this file in an enclosing scope.", statement.keyword)
         else:
             self.imported_paths.append(path)
 
         self.declare_name(statement.alias.lexeme, statement.alias)
+
+    def _is_imported_in_ancestor(self, path):
+        ancestor = self.parent
+        while ancestor is not None:
+            if path in ancestor.imported_paths:
+                return True
+            ancestor = ancestor.parent
+        return False
 
     def declare_name(self, name, token):
         """이 스코프에 이름 하나를 선언한다. 이미 있으면 중복 오류를 기록한다."""
@@ -132,8 +143,8 @@ class CheckerUnit:
         self.check_block(self.statements)
         return self.errors
 
-    def check_block(self, statements):
-        scope = ScopeChecker(self.expr_name_finder, self.errors)
+    def check_block(self, statements, parent=None):
+        scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent)
         for statement in statements:
             self.check_statement(statement, scope)
 
@@ -168,7 +179,7 @@ class CheckerUnit:
         if id(statement) in self.visited_blocks:
             return
         self.visited_blocks.add(id(statement))
-        self.check_block(statement.statements)
+        self.check_block(statement.statements, parent=scope)
 
     def _check_if_stmt(self, statement, scope):
         self.check_statement(statement.then_branch, scope)
@@ -191,7 +202,7 @@ class CheckerUnit:
         scope.check_import(statement)
 
     def _check_function_stmt(self, statement, scope):
-        self._check_function_body(statement.params, statement.body, is_init=False)
+        self._check_function_body(statement.params, statement.body, is_init=False, parent=scope)
 
     def _check_return_stmt(self, statement, scope):
         if self.function_depth == 0:
@@ -208,7 +219,7 @@ class CheckerUnit:
         try:
             for method in statement.methods:
                 is_init = method.name.lexeme == "init"
-                self._check_function_body(method.params, method.body, is_init)
+                self._check_function_body(method.params, method.body, is_init, parent=scope)
         finally:
             self.class_stack.pop()
 
@@ -217,9 +228,9 @@ class CheckerUnit:
         if isinstance(superclass, VariableExpr) and superclass.name.lexeme == statement.name.lexeme:
             self.errors.append(CheckerError("A class can't inherit from itself.", superclass.name))
 
-    def _check_function_body(self, params, body, is_init):
+    def _check_function_body(self, params, body, is_init, parent=None):
         # 파라미터도 이 함수(메서드) 스코프의 선언으로 취급한다.
-        function_scope = ScopeChecker(self.expr_name_finder, self.errors)
+        function_scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent)
         for param in params:
             function_scope.declare_name(param.lexeme, param)
 
