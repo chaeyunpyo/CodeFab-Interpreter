@@ -23,6 +23,11 @@ _NUMERIC_BINARY_OPS = {
     TokenType.LESS_EQUAL: operator.le,
     TokenType.EQUAL_GREATER: operator.ge,
     TokenType.EQUAL_LESS: operator.le,
+}
+
+# EQUAL_EQUAL/BANG_EQUAL은 Executor(_expr.py)와 마찬가지로 숫자 여부와
+# 무관하게 항상 접을 수 있다.
+_EQUALITY_OPS = {
     TokenType.EQUAL_EQUAL: operator.eq,
     TokenType.BANG_EQUAL: operator.ne,
 }
@@ -51,6 +56,10 @@ def _fold_binary_value(operator_token, left, right):
         if _is_number(left) and _is_number(right):
             return left + right
         return _NOT_FOLDABLE
+
+    equality_op = _EQUALITY_OPS.get(op)
+    if equality_op is not None:
+        return equality_op(left, right)
 
     numeric_op = _NUMERIC_BINARY_OPS.get(op)
     if numeric_op is not None and _is_number(left) and _is_number(right):

@@ -112,6 +112,7 @@ def _evaluate_logical(expr: LogicalExpr, storage: Storage) -> Any:
 
 
 # SLASH는 0으로 나누기 검사가 별도로 필요해서 이 dict에는 넣지 않고 따로 처리한다.
+# EQUAL_EQUAL/BANG_EQUAL도 숫자 여부와 무관하게 항상 비교 가능해야 하므로 따로 처리한다.
 _NUMERIC_BINARY_OPS: Dict[TokenType, Callable[[Any, Any], Any]] = {
     TokenType.PLUS: operator.add,
     TokenType.MINUS: operator.sub,
@@ -123,6 +124,9 @@ _NUMERIC_BINARY_OPS: Dict[TokenType, Callable[[Any, Any], Any]] = {
     # EQUAL_GREATER("=>")/EQUAL_LESS("=<")는 GREATER_EQUAL/LESS_EQUAL과 의미가 같은 별칭 토큰이다.
     TokenType.EQUAL_GREATER: operator.ge,
     TokenType.EQUAL_LESS: operator.le,
+}
+
+_EQUALITY_OPS: Dict[TokenType, Callable[[Any, Any], Any]] = {
     TokenType.EQUAL_EQUAL: operator.eq,
     TokenType.BANG_EQUAL: operator.ne,
 }
@@ -141,6 +145,10 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
 
     if op == TokenType.PLUS and _is_string(left) and _is_string(right):
         return left + right
+
+    equality_op = _EQUALITY_OPS.get(op)
+    if equality_op is not None:
+        return equality_op(left, right)
 
     numeric_op = _NUMERIC_BINARY_OPS.get(op)
     if numeric_op is None:

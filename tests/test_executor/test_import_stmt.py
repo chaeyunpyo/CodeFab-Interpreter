@@ -103,6 +103,31 @@ class TestBasicImport:
             _run(f'{{ import "{mod}" alias lib; }} var r = lib.x;')
 
 
+# ── 정적 바인딩 (요구사항_정리/실행전_최적화.md) ─────────────────────────────────
+
+class TestImportedModuleUsesStaticBinding:
+    def test_모듈_내부_지역_변수_조회는_이름_기반_체인_탐색을_거치지_않는다(self, tmp_path, mocker):
+        """import된 모듈 실행용 Storage에도 checker.locals가 전달되어야
+        모듈 안의 지역 변수(파라미터/블록 변수) 조회가 Storage.get()의 이름
+        기반 스코프 체인 탐색이 아니라 get_resolved()의 O(1) 경로를 탄다.
+
+        locals를 안 넘기면(과거 버그) checker.locals가 계산되고도 버려져서
+        모듈 안의 모든 지역 변수 조회가 매번 Storage.get()으로 폴백한다.
+        """
+        mod = tmp_path / "mod.txt"
+        mod.write_text(
+            "Func add(a, b) { { var result = a + b; return result; } }",
+            encoding="utf-8",
+        )
+
+        spy = mocker.patch.object(Storage, "get", wraps=Storage.get, autospec=True)
+        storage = _run(f'import "{mod}" alias sum; var r = sum.add(3, 4);')
+
+        module_local_lookups = [call for call in spy.call_args_list if call.args[1] in ("a", "b", "result")]
+        assert module_local_lookups == []
+        assert storage.get("r") == 7
+
+
 # ── 캐시 동작 ─────────────────────────────────────────────────────────────────
 
 class TestImportCache:
@@ -149,3 +174,28 @@ class TestImportErrors:
         mod.write_text("var x = 1;", encoding="utf-8")
         with pytest.raises(UndefinedPropertyError):
             _run(f'import "{mod}" alias lib; var r = lib.nonexistent;')
+
+    def test_if_블록_안에_숨은_순환_import도_CircularImportError(self, tmp_path):
+        """import는 반복문만 금지고 if는 허용되는데, 사전 순회가 최상위
+        문장만 훑으면 if 블록 속 import는 못 찾아 순환 감지를 놓치고
+        실행 시점에 RecursionError로 죽는다 (a -> b -> a 반복).
+        """
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text(f'if (true) {{ import "{b}" alias b_alias; }}', encoding="utf-8")
+        b.write_text(f'import "{a}" alias a_alias;', encoding="utf-8")
+        with pytest.raises(CircularImportError):
+            _run(f'import "{a}" alias a_alias;')
+
+    def test_함수_호출로_실행_중에만_드러나는_순환_import도_CircularImportError(self, tmp_path):
+        """Func 본문 속 import는 호출 시점에야 실행되므로 정적 사전 순회가
+        의도적으로 건너뛴다. 그 함수가 모듈 최상위에서 곧바로 호출되어
+        원래 import가 아직 실행 중인 채로 순환이 닫히면, 실행 단계
+        안전망(Importer.executing)이 대신 잡아야 한다.
+        """
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text(f'Func f() {{ import "{b}" alias b_alias; }} f();', encoding="utf-8")
+        b.write_text(f'Func g() {{ import "{a}" alias a_alias; }} g();', encoding="utf-8")
+        with pytest.raises(CircularImportError):
+            _run(f'import "{a}" alias a_alias;')

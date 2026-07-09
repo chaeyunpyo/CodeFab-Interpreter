@@ -267,6 +267,13 @@ def test_fold_does_not_fold_literal_division_by_zero():
     assert_not_folded(make_binary(LiteralExpr(3), TokenType.SLASH, "/", LiteralExpr(0)))
 
 
+def test_fold_replaces_constant_string_equality_with_boolean_literal():
+    # var x = "hi" == "hi";  -- ==/!=는 숫자 전용이 아니라 문자열도 접혀야 한다.
+    binary = make_binary(LiteralExpr("hi"), TokenType.EQUAL_EQUAL, "==", LiteralExpr("hi"))
+
+    assert_folds_to(binary, True)
+
+
 def test_fold_applies_inside_for_loop_body():
     # for (;;) { var x = 1 + 2; }  -- 최적화는 반복문 본문 안쪽에도 똑같이 적용된다.
     binary = make_binary(LiteralExpr(1), TokenType.PLUS, "+", LiteralExpr(2))
