@@ -27,6 +27,7 @@ from ._signals import ReturnSignal
 from ._callable import LoxCallable
 from ._function import Function
 from ._class import LoxClass, LoxInstance
+from ._namespace import LoxNamespace
 from ._expr import evaluate, stringify
 from ._stmt import execute
 
@@ -50,6 +51,7 @@ __all__ = [
     "Function",
     "LoxClass",
     "LoxInstance",
+    "LoxNamespace",
     "Storage",
     "evaluate",
     "execute",

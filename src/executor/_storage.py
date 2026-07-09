@@ -26,7 +26,7 @@ from .errors import UndefinedVariableError
 
 
 class Storage:
-    def __init__(self, locals: Optional[Dict[int, int]] = None) -> None:
+    def __init__(self, locals: Optional[Dict[int, int]] = None, importer=None) -> None:
         # 인덱스 0이 전역 스코프, -1이 현재 가장 안쪽 스코프
         from ._array import ARRAY_BUILTIN
         self._scopes: List[Dict[str, Any]] = [{"Array": ARRAY_BUILTIN}]
@@ -36,6 +36,13 @@ class Storage:
         # 파이프라인이 채워주며(Storage 생성 시 또는 나중에 속성으로), 없는 노드는
         # 전역 참조/함수 경계를 넘는 참조로 보고 get()/set()의 전체 체인 탐색으로 처리한다.
         self.locals: Dict[int, int] = locals if locals is not None else {}
+        # import 대상 파일 assemble+check+캐시를 담당. 모듈 Storage끼리 공유해 캐시를 재활용한다.
+        if importer is None:
+            from importer import Importer
+            importer = Importer()
+        self._importer = importer
+        # 중첩 import 시 상대 경로의 기준 디렉터리.
+        self._current_base_dir: Optional[str] = None
 
     # ── 변수 선언 ─────────────────────────────────────────────────────────────
 
