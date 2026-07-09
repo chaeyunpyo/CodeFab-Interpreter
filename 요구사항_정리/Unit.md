@@ -11,12 +11,12 @@
 ```
 
 `src/pipeline.py`의 `Pipeline`이 이 세 Unit을 순서대로 엮어서 실행하고,
-`src/shell.py`가 사용자로부터 코드를 입력받아 `Pipeline`에 넘기는 REPL이다.
+`src/cli/`가 사용자로부터 코드를 입력받아 `Pipeline`에 넘기는 CLI(프롬프트/파일/디버그 3모드)이다.
 
 | 분류    | 클래스           | 설명                                              | 위치                          |
 | ----- | ------------- | ----------------------------------------------- | --------------------------- |
 | 진입점   | `Pipeline`    | Assembler -> CheckerUnit -> Executor를 순서대로 실행    | `src/pipeline.py`            |
-| 진입점   | `run_shell`   | 사용자 입력을 받아 Pipeline에 넘기는 대화형 셸(REPL)             | `src/shell.py`               |
+| 진입점   | `main`/`run_cli` | 사용자 입력을 받아 Pipeline에 넘기는 CLI 진입점(프롬프트 모드는 REPL)  | `src/cli/_main.py`, `_repl.py` |
 | 어휘 분석 | `Tokenizer`   | 소스 코드 문자열을 Token 목록으로 변환                        | `src/assembler/_tokenizer.py` |
 | 구문 분석 | `AstBuilder`  | Token 목록을 재귀 하강 파싱하여 Stmt/Expr 트리를 생성            | `src/assembler/_ast_builder.py` |
 | 구문 분석 | `Assembler`   | Tokenizer + AstBuilder를 묶어서 소스 -> Stmt 트리(AST) 조립 | `src/assembler/_assembler.py` |
@@ -71,8 +71,10 @@ Assembler, Checker, Executor가 만드는 오류는 전부 `source_error.SourceE
 | 자기 자신 상속         | `A class can't inherit from itself.`               | `Class Robot : Robot { }`     |
 | init에서 값 있는 return | `Can't return a value from an initializer.`      | `init() { return 5; }`        |
 | 같은 scope 내 중복 import | `Already imported this file in this scope.`    | `import "a.txt" alias a; import "a.txt" alias b;` |
+| 상위 scope 중복 import  | `Already imported this file in an enclosing scope.` | `import "a.txt" alias a; { import "a.txt" alias b; }` |
 | import alias 이름 충돌  | `Already a variable with this name in this scope.` | `import "a.txt" alias x; import "b.txt" alias x;` |
 | 반복문 내 import       | `Can't use import statement inside a loop.`     | `for (;;) { import "a.txt" alias a; }` |
+| built-in 이름 재할당    | `Cannot reassign built-in name '{name}'.`       | `Array = 5;` (`src/builtin_names.py`) |
 
 자세한 내용은 `요구사항_정리/function.md`, `요구사항_정리/class.md`,
 `요구사항_정리/import.md` 참고.
@@ -93,6 +95,7 @@ Assembler, Checker, Executor가 만드는 오류는 전부 `source_error.SourceE
 | 인스턴스 아닌 대상 필드 접근 | `NotAnInstanceError`  | `var x = 10; x.field`                     |
 | 존재하지 않는 필드/메서드   | `UndefinedPropertyError` | `print r.power;`                       |
 | 클래스가 아닌 대상 상속    | `NotAClassError`      | `var x = 10; Class Robot : x { ... }`     |
+| 재귀 호출 스택 초과       | `StackOverflowError` | `Func f() { return f(); } f();` (종료 조건 없는 재귀) |
 
 모두 `src/executor/errors.py`에 정의되어 있고, `ExecutionError`(공통
 상위 타입)를 거쳐 `SourceError`를 상속한다.
