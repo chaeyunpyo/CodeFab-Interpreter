@@ -73,8 +73,8 @@ def assert_not_folded(expr):
 # ── 정적 바인딩(변수 거리 계산) ──────────────────────────────────────────
 
 
-def test_resolve_does_not_bind_variable_declared_and_used_at_top_level():
-    # var a = 1; print a;  -- 최상위=전역이라 거리 계산 대상이 아니다.
+def test_resolve_binds_distance_zero_for_variable_declared_and_used_at_top_level():
+    # var a = 1; print a;  -- 전역도 scope_stack의 맨 아래라 거리 0.
     var_expr = make_var("a")
     statements = [make_var_decl("a", LiteralExpr(1)), make_print(var_expr)]
     checker = CheckerUnit(statements)
@@ -82,7 +82,7 @@ def test_resolve_does_not_bind_variable_declared_and_used_at_top_level():
     errors = checker.check()
 
     assert errors == []
-    assert id(var_expr) not in checker.locals
+    assert checker.locals[id(var_expr)] == 0
 
 
 def test_resolve_binds_distance_zero_when_used_in_same_block_as_declaration():
@@ -169,8 +169,9 @@ def test_resolve_binds_distance_one_for_function_parameter_from_nested_block():
     assert checker.locals[id(var_expr)] == 1
 
 
-def test_resolve_does_not_bind_global_variable_referenced_inside_function():
-    # var g = 1; Func foo() { print g; }  -- 함수 안에서 전역 참조는 거리 계산 대상이 아니다.
+def test_resolve_binds_global_variable_referenced_inside_function():
+    # var g = 1; Func foo() { print g; }  -- 함수 안에서도 전역은 거리 계산 대상이다
+    # (Storage.push_call_frame이 전역은 복사해서 유지하므로 거리 1이면 된다).
     var_expr = make_var("g")
     fn = make_function(body=[make_print(var_expr)])
     statements = [make_var_decl("g", LiteralExpr(1)), fn]
@@ -178,7 +179,7 @@ def test_resolve_does_not_bind_global_variable_referenced_inside_function():
 
     checker.check()
 
-    assert id(var_expr) not in checker.locals
+    assert checker.locals[id(var_expr)] == 1
 
 
 def test_resolve_does_not_leak_binding_between_sibling_blocks():
@@ -190,6 +191,23 @@ def test_resolve_does_not_leak_binding_between_sibling_blocks():
     checker.check()
 
     assert id(var_expr) not in checker.locals
+
+
+def test_resolve_binds_global_variable_deeply_nested_inside_blocks():
+    # 실행전_최적화.md의 예시: var a = 0; { {13겹} for (...) { a = a + 1; } }
+    # a는 전역이지만 13겹 블록 + for문 본문 블록까지 총 14단계 안쪽에서
+    # 쓰이므로 거리는 14여야 한다 (Storage._scopes[-(14+1)] == 전역).
+    assign_expr = make_assign("a", make_binary(make_var("a"), TokenType.PLUS, "+", LiteralExpr(1)))
+    body = ExpressionStmt(expression=assign_expr)
+    for _ in range(13):
+        body = make_block(body)
+    for_stmt = ForStmt(initializer=None, condition=None, increment=None, body=make_block(body))
+    statements = [make_var_decl("a", LiteralExpr(0)), for_stmt]
+    checker = CheckerUnit(statements)
+
+    checker.check()
+
+    assert checker.locals[id(assign_expr)] == 14
 
 
 # ── 상수 연산 최적화 ────────────────────────────────────────────────────
