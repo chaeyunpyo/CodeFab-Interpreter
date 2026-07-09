@@ -10,7 +10,7 @@ from checker_helpers import make_class, make_function, make_param, make_super, m
 
 
 def test_check_detects_this_used_outside_class():
-    # print this;  (클래스 밖)
+    # print This;  (클래스 밖)
     statements = [PrintStmt(expression=make_this())]
     checker = CheckerUnit(statements)
 
@@ -21,7 +21,7 @@ def test_check_detects_this_used_outside_class():
 
 
 def test_check_detects_this_used_inside_plain_function():
-    # Func foo() { print this; }  (클래스가 아니라 일반 함수 안)
+    # Func foo() { print This; }  (클래스가 아니라 일반 함수 안)
     fn = make_function(body=[PrintStmt(expression=make_this())])
     checker = CheckerUnit([fn])
 
@@ -32,7 +32,7 @@ def test_check_detects_this_used_inside_plain_function():
 
 
 def test_check_allows_this_used_inside_method():
-    # Class Robot { report() { print this; } }
+    # Class Robot { report() { print This; } }
     method = make_function(name="report", body=[PrintStmt(expression=make_this())])
     cls = make_class(methods=[method])
     checker = CheckerUnit([cls])
@@ -41,7 +41,7 @@ def test_check_allows_this_used_inside_method():
 
 
 def test_check_detects_super_used_outside_class():
-    # super.move();  (클래스 밖)
+    # Super.move();  (클래스 밖)
     statements = [ExpressionStmt(expression=make_super())]
     checker = CheckerUnit(statements)
 
@@ -52,7 +52,7 @@ def test_check_detects_super_used_outside_class():
 
 
 def test_check_detects_super_used_in_class_without_superclass():
-    # Class Robot { move() { super.move(); } }  (상속하지 않은 클래스)
+    # Class Robot { move() { Super.move(); } }  (상속하지 않은 클래스)
     method = make_function(name="move", body=[ExpressionStmt(expression=make_super())])
     cls = make_class(superclass=None, methods=[method])
     checker = CheckerUnit([cls])
@@ -64,7 +64,7 @@ def test_check_detects_super_used_in_class_without_superclass():
 
 
 def test_check_allows_super_used_in_class_with_superclass():
-    # Class SpeedRobot : Robot { move() { super.move(); } }
+    # Class SpeedRobot : Robot { move() { Super.move(); } }
     method = make_function(name="move", body=[ExpressionStmt(expression=make_super())])
     cls = make_class(
         name="SpeedRobot",
@@ -138,7 +138,7 @@ def test_check_allows_return_value_in_regular_method():
 
 
 def test_check_allows_this_inside_nested_block_of_method():
-    # Class Robot { move() { { print this; } } }
+    # Class Robot { move() { { print This; } } }
     method = make_function(name="move", body=[BlockStmt(statements=[PrintStmt(expression=make_this())])])
     cls = make_class(methods=[method])
     checker = CheckerUnit([cls])
@@ -147,7 +147,7 @@ def test_check_allows_this_inside_nested_block_of_method():
 
 
 def test_check_detects_this_used_inside_nested_block_outside_class():
-    # { { print this; } }  (클래스 밖, 블록이 여러 겹 중첩되어 있어도 잡혀야 한다)
+    # { { print This; } }  (클래스 밖, 블록이 여러 겹 중첩되어 있어도 잡혀야 한다)
     statements = [BlockStmt(statements=[BlockStmt(statements=[PrintStmt(expression=make_this())])])]
     checker = CheckerUnit(statements)
 
@@ -158,7 +158,7 @@ def test_check_detects_this_used_inside_nested_block_outside_class():
 
 
 def test_check_detects_this_used_inside_binary_expression_outside_class():
-    # print this == null;  (this가 표현식 맨 앞이 아니라 안쪽 깊숙히 있어도 잡혀야 한다)
+    # print This == null;  (This가 표현식 맨 앞이 아니라 안쪽 깊숙히 있어도 잡혀야 한다)
     expr = BinaryExpr(left=make_this(), operator=Token(TokenType.EQUAL_EQUAL, "=="), right=LiteralExpr(None))
     statements = [PrintStmt(expression=expr)]
     checker = CheckerUnit(statements)
@@ -170,7 +170,7 @@ def test_check_detects_this_used_inside_binary_expression_outside_class():
 
 
 def test_check_allows_super_init_call_when_class_has_superclass():
-    # Class SpeedRobot : Robot { init(name) { super.init(name); } }  -- 상속+생성자+super 조합.
+    # Class SpeedRobot : Robot { init(name) { Super.init(name); } }  -- 상속+생성자+Super 조합.
     init_method = make_function(
         name="init",
         params=[make_param("name")],
@@ -202,14 +202,39 @@ def test_check_does_not_leak_init_flag_between_sibling_methods():
     assert checker.check() == []
 
 
-def test_check_allows_this_inside_function_nested_in_method():
-    # Class Robot { move() { Func helper() { print this; } } }  -- 클로저에서도 this는 유효하다.
+def test_check_detects_this_inside_plain_function_nested_in_method():
+    # Class Robot { move() { Func helper() { print This; } } }
+    # 이 언어는 클로저가 없어서(Storage.push_call_frame이 호출마다 지역
+    # 스코프를 초기화) helper는 메서드로 바인딩되지 않은 일반 Function이라
+    # This가 실행 시점에 없다 (Undefined variable 'This'). 그래서 정적
+    # 검사에서도 "클래스 밖"과 동일하게 잡아야 한다.
     helper = make_function(name="helper", body=[PrintStmt(expression=make_this())])
     method = make_function(name="move", body=[helper])
     cls = make_class(methods=[method])
     checker = CheckerUnit([cls])
 
-    assert checker.check() == []
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't use 'this' outside of a class."
+
+
+def test_check_detects_super_inside_plain_function_nested_in_method():
+    # Class SpeedRobot : Robot { move() { Func helper() { Super.move(); } } }
+    # This와 같은 이유로 Super도 helper 안에서는 유효하지 않다.
+    helper = make_function(name="helper", body=[ExpressionStmt(expression=make_super())])
+    method = make_function(name="move", body=[helper])
+    cls = make_class(
+        name="SpeedRobot",
+        superclass=VariableExpr(Token(TokenType.IDENTIFIER, "Robot")),
+        methods=[method],
+    )
+    checker = CheckerUnit([cls])
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Can't use 'super' outside of a class."
 
 
 def test_check_allows_return_value_in_function_nested_inside_init():

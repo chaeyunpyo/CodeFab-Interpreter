@@ -29,11 +29,11 @@ def make_class(name="Robot", superclass=None, methods=None):
 
 
 def make_this():
-    return ThisExpr(keyword=Token(TokenType.THIS, "this"))
+    return ThisExpr(keyword=Token(TokenType.THIS, "This"))
 
 
 def make_super(method="move"):
-    return SuperExpr(keyword=Token(TokenType.SUPER, "super"), method=Token(TokenType.IDENTIFIER, method))
+    return SuperExpr(keyword=Token(TokenType.SUPER, "Super"), method=Token(TokenType.IDENTIFIER, method))
 
 
 def make_import(path="a.txt", alias="a"):
