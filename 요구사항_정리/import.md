@@ -20,7 +20,7 @@
 | 분류 | 항목 | 설명 |
 | --- | --- | --- |
 | 위치 제한 | 반복문 내 사용 금지 | import문은 어디서든 가능하지만 반복문 내부에서는 불가 |
-| 파일 내용 제한 | 선언만 허용 | import 대상 파일에는 import/함수 선언/전역 변수 선언만 허용 (그 외 처리는 팀 자율) |
+| 파일 내용 제한 | 선언만 허용 | import 대상 파일에는 import/함수 선언/전역 변수 선언만 허용 (그 외 처리는 팀 자율 — **이 팀은 제약을 두지 않기로 결정**: 선언 외 문장도 에러 없이 그대로 실행됨. Python/JS 모듈처럼 top-level에 부수효과가 있는 문장을 허용하는 관례를 따름) |
 | 경로 제한 | 문자열 리터럴만 허용 | 파일 경로 자리에는 문자열 리터럴만 올 수 있음 |
 | 순환 참조 | 순환 import 금지 | a.txt가 b.txt를, b.txt가 다시 a.txt를 import하면 오류 |
 | 스코프 | scope 한정 적용 | import된 선언은 import문이 실행된 현재 scope에만 적용됨 |
@@ -88,12 +88,11 @@
   쪽(Executor)이 "최상위 프로그램 자체의 오류"와 "import한 파일의
   오류"를 타입만으로 구분할 수 없기 때문이다.
 
-Node 정의(`ImportStmt`)와 파일을 assemble+check하는 Importer는
-구현됐지만, alias를 실제 스코프에 바인딩해서 실행하는 것은 Executor
-쪽 구현이 필요해서 아직 미착수 상태다 — Executor가 ImportStmt를
-실행할 때 `Importer.import_module()`이 돌려주는 Stmt 목록을 새
-스코프에서 실행하고, 그 결과(선언된 이름들)를 alias 변수에 바인딩하는
-식이 될 것으로 예상한다.
+alias를 실제 스코프에 바인딩해서 실행하는 것도 Executor 쪽에 구현
+완료됨(`LoxNamespace`, 테스트: `tests/test_executor/test_import_stmt.py`,
+`tests/test_integration/test_imports.py`). import된 선언은 import문이
+실행된 현재 scope에만 적용되고(블록 밖에서는 alias 접근 불가), 정적
+바인딩 거리도 import된 모듈 자신의 실행에 그대로 적용된다.
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
