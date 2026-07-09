@@ -352,6 +352,7 @@ def test_step21_added_keywords(source, expected_type):
         Token(TokenType.EOF, ""),
     ]
 
+
 # --- 22단계: 추가 - 콤마 (함수 파라미터/인자 구분, function.md 참고) ---
 
 def test_step22_comma_token():
@@ -479,3 +480,27 @@ def test_step25_static_array_syntax_tokenizes_with_existing_tokens(source, expec
     tokens = tokenizer.tokenize()
 
     assert tokens == expected
+
+
+# --- 26단계: 예약어는 대소문자를 구분한다 (요구사항_정리/TokenType.md 참고) ---
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "this",   # This만 유효, this는 예약어가 아니다
+        "super",  # Super만 유효, super는 예약어가 아니다
+        "True",   # true만 유효, True는 예약어가 아니다
+        "False",  # false만 유효, False는 예약어가 아니다
+    ],
+)
+def test_step26_keywords_are_case_sensitive(source):
+    """요구사항_정리/TokenType.md에 나열된 표기(This/Super/true/false)만
+    예약어로 인식하고, 대소문자가 다른 변형은 IDENTIFIER로 취급해야 한다.
+    """
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.IDENTIFIER, source),
+        Token(TokenType.EOF, ""),
+    ]

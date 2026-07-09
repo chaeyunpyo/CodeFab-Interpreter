@@ -16,7 +16,16 @@
 
 * **총 45개**
 
-> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`)은 function/class/정적 배열/import 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름 — 팀에서 확정 필요.
+> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`)은 function/class/정적 배열/import 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름.
+>
+> **예약어는 대소문자를 구분하며, 이 문서에 나열된 표기만 유효하다.**
+> 예를 들어 `This`/`Super`는 대문자로만 써야 하고 `this`/`super`(소문자)는
+> 예약어가 아니라 그냥 식별자로 취급된다. `true`/`false`도 소문자만
+> 유효하고 `True`/`False`는 지원하지 않는다. 원본 PDF에는 대소문자
+> 표기가 슬라이드마다 섞여 있었지만, 양쪽을 다 받아주는 대신 이 문서에
+> 적힌 표기 하나로 통일하기로 팀에서 확정함(테스트:
+> `tests/test_assembler/test_tokenizer.py`의
+> `test_step26_keywords_are_case_sensitive`).
 
 
 
