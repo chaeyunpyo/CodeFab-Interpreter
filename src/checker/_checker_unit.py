@@ -160,6 +160,11 @@ class CheckerUnit:
         scope.check_import(statement)
 
     def _check_function_stmt(self, statement, scope):
+        # 함수 이름도 이 스코프의 선언이다 - 같은 스코프에 이미 있는
+        # var/Func/Class/import alias(또는 Array 같은 built-in)와
+        # 충돌하면 일반 중복 선언과 동일하게 오류가 난다.
+        scope.declare_name(statement.name.lexeme, statement.name)
+
         # 일반 Func 선언은 메서드로 바인딩되지 않은 Function이라 This/Super가
         # 실행 시점에 없다(클로저 없음, src/executor/_function.py 참고).
         # 메서드 본문 자체를 검사하는 _check_class_stmt -> _check_function_body
@@ -180,6 +185,9 @@ class CheckerUnit:
             self.errors.append(CheckerError("Can't return a value from an initializer.", statement.keyword))
 
     def _check_class_stmt(self, statement, scope):
+        # 클래스 이름도 이 스코프의 선언이다 (Func와 동일한 규칙).
+        scope.declare_name(statement.name.lexeme, statement.name)
+
         self._check_self_inheritance(statement)
 
         self.class_stack.append(statement.superclass is not None)

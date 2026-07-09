@@ -64,6 +64,21 @@ def test_initializer_cannot_return_a_value(run_source):
     assert output == "[Checker] Line 1: Can't return a value from an initializer.\n"
 
 
+def test_reassigning_builtin_name_raises_checker_error(run_source):
+    output = run_source("Array = 5;")
+    assert output == "[Checker] Line 1: Cannot reassign built-in name 'Array'.\n"
+
+
+def test_redeclaring_builtin_name_as_variable_raises_checker_error(run_source):
+    output = run_source("var Array = 5;")
+    assert output == "[Checker] Line 1: Already a variable with this name in this scope.\n"
+
+
+def test_redeclaring_builtin_name_as_function_raises_checker_error(run_source):
+    output = run_source("Func Array() { return 1; }")
+    assert output == "[Checker] Line 1: Already a variable with this name in this scope.\n"
+
+
 def test_static_errors_prevent_any_execution(run_source):
     """정적 오류가 있으면 그 전에 있는 print문도 실행되지 않아야 한다
     (Assembler/Checker 단계가 Executor보다 먼저 전체를 검사하기 때문에)."""
