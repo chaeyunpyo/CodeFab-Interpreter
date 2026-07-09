@@ -124,8 +124,11 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
     # Storage 초기화 직후의 내장 이름(Array 등)은 namespace에 포함하지 않는다.
     initial_names = set(module_storage._scopes[0].keys())
 
-    for module_stmt in statements:
-        execute(module_stmt, module_storage)
+    # 실행 단계 순환 import 안전망 — 정적 사전 순회가 놓친 순환(Func/Class
+    # 본문 속 import)이 실제로 실행되며 재귀하면 여기서 CircularImportError로 끊는다.
+    with storage._importer.executing(path, keyword=stmt.keyword, base_dir=base_dir):
+        for module_stmt in statements:
+            execute(module_stmt, module_storage)
 
     namespace = LoxNamespace(stmt.alias.lexeme)
     for name, value in module_storage._scopes[0].items():

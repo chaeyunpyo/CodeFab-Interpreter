@@ -218,6 +218,22 @@ def test_import_module_three_file_circular_import_detected_from_middle_of_cycle(
     assert "c.txt" in message
 
 
+def test_import_module_circular_import_hidden_inside_if_block_is_still_detected(tmp_path):
+    """import가 if 블록 안에 있어도(반복문만 금지, if는 허용) 순환 감지가
+    돼야 한다. 사전 순회가 최상위 문장만 훑으면 이 순환을 놓쳐, 실제
+    실행 시점에 무한 재귀(RecursionError)로 죽는다.
+    """
+    _write(tmp_path / "b.txt", 'import "a.txt" alias a;\n')
+    a_path = _write(tmp_path / "a.txt", 'if (true) {\n  import "b.txt" alias b;\n}\n')
+
+    with pytest.raises(CircularImportError) as excinfo:
+        Importer().import_module(a_path)
+
+    message = str(excinfo.value)
+    assert "a.txt" in message
+    assert "b.txt" in message
+
+
 # --- 경로 정규화 ---
 
 def test_import_module_detects_cycle_across_differently_spelled_relative_paths(tmp_path):
