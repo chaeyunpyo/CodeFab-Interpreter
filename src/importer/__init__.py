@@ -8,13 +8,13 @@ Public API:
     ModuleImportError           - import 대상 파일이 Assembler 또는 Checker를 통과하지 못했을 때
 """
 
-from ._importer import (
+from .errors import (
     CircularImportError,
     ImportedFileNotFoundError,
-    Importer,
     ModuleImportError,
     PipelineImportError,
 )
+from ._importer import Importer
 
 __all__ = [
     "Importer",
