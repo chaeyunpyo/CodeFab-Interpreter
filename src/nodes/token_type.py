@@ -19,6 +19,7 @@ class TokenType(Enum):
     MINUS = auto()
     STAR = auto()
     SLASH = auto()
+    PERCENT = auto()  # 나머지(모듈로) 연산자 (추가)
 
     # 할당 / 비교 연산자 (PDF p.27)
     EQUAL = auto()

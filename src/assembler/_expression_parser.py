@@ -64,7 +64,7 @@ class ExpressionParser:
             ),
         ),
         (BinaryExpr, (TokenType.PLUS, TokenType.MINUS)),
-        (BinaryExpr, (TokenType.STAR, TokenType.SLASH)),
+        (BinaryExpr, (TokenType.STAR, TokenType.SLASH, TokenType.PERCENT)),
     )
     _UNARY_OPERATORS = (TokenType.BANG, TokenType.MINUS, TokenType.PLUS)
 

@@ -256,6 +256,16 @@ def test_fold_replaces_constant_string_equality_with_boolean_literal():
     assert_folds_to(binary, True)
 
 
+def test_fold_replaces_constant_modulo_with_literal():
+    # var x = 10 % 3;  -- 나머지 연산도 리터럴끼리면 결과 리터럴로 접힌다.
+    assert_folds_to(make_binary(LiteralExpr(10), TokenType.PERCENT, "%", LiteralExpr(3)), 1)
+
+
+def test_fold_does_not_fold_literal_modulo_by_zero():
+    # var x = 3 % 0;  -- 런타임 오류 경로를 보존해야 하므로 접지 않는다.
+    assert_not_folded(make_binary(LiteralExpr(3), TokenType.PERCENT, "%", LiteralExpr(0)))
+
+
 def test_fold_applies_inside_for_loop_body():
     # for (;;) { var x = 1 + 2; }  -- 최적화는 반복문 본문 안쪽에도 똑같이 적용된다.
     binary = make_binary(LiteralExpr(1), TokenType.PLUS, "+", LiteralExpr(2))
