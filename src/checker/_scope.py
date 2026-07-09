@@ -4,8 +4,11 @@ from .errors import CheckerError
 class ScopeChecker:
     """블록 하나(스코프)의 변수 선언 오류를 검사한다."""
 
-    def __init__(self, expr_name_finder, errors, parent=None):
-        self.declared_names = []
+    def __init__(self, expr_name_finder, errors, parent=None, reserved_names=()):
+        # reserved_names: 이 스코프에 이미 차 있는 것으로 취급할 이름들
+        # (예: 전역 스코프의 built-in 이름). declare_name()으로 재선언을
+        # 시도하면 일반 중복 선언과 동일하게 오류로 잡힌다.
+        self.declared_names = list(reserved_names)
         self.imported_paths = []
         self.expr_name_finder = expr_name_finder
         self.errors = errors

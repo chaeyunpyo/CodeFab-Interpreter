@@ -78,6 +78,53 @@ def test_check_allows_same_name_in_nested_block():
     assert checker.check() == []
 
 
+# built-in 이름(Array 등) 보호 — Storage._scopes[0]에 항상 등록되는 이름을
+# 최상위에서 재선언하면 이후 Array(...) 호출이 전부 깨지므로 막아야 한다.
+
+def test_check_detects_top_level_redeclaration_of_builtin_name():
+    statements = [make_var_decl("Array")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_allows_shadowing_builtin_name_inside_nested_block():
+    # 최상위 Array는 보호 대상이지만, 지역 블록에서 그림자를 만드는 건
+    # 일반 변수 shadowing과 같은 규칙이라 허용된다 (최상위 Array 자체는
+    # 그대로 남아있다).
+    statements = [BlockStmt(statements=[make_var_decl("Array")])]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
+def test_check_detects_plain_assignment_to_builtin_name():
+    # Array = 5;  -- var 없는 대입도 선언과 마찬가지로 전역 built-in을
+    # 영구히 덮어쓰므로(Storage.set이 이름 기반으로 전역까지 거슬러
+    # 올라가 찾아서 덮어씀) 막아야 한다.
+    assign = AssignExpr(name=Token(TokenType.IDENTIFIER, "Array"), value=LiteralExpr(5.0))
+    statements = [ExpressionStmt(expression=assign)]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Cannot reassign built-in name 'Array'."
+
+
+def test_check_allows_assignment_to_locally_shadowed_builtin_name():
+    # { var Array = 1; Array = 2; }  -- 지역에서 그림자를 만든 뒤 그 지역
+    # 변수에 대입하는 거라 실제 전역 built-in은 건드리지 않으므로 허용된다.
+    assign = AssignExpr(name=Token(TokenType.IDENTIFIER, "Array"), value=LiteralExpr(2.0))
+    statements = [BlockStmt(statements=[make_var_decl("Array"), ExpressionStmt(expression=assign)])]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
+
+
 def test_check_detects_duplicate_declaration_inside_nested_block():
     # { var a = "hi"; var a = 3; }
     statements = [
