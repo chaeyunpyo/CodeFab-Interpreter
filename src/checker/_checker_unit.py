@@ -140,7 +140,16 @@ class CheckerUnit:
         scope.check_import(statement)
 
     def _check_function_stmt(self, statement, scope):
-        self._check_function_body(statement.params, statement.body, is_init=False, parent=scope)
+        # 일반 Func 선언은 메서드로 바인딩되지 않은 Function이라 This/Super가
+        # 실행 시점에 없다(클로저 없음, src/executor/_function.py 참고).
+        # 메서드 본문 자체를 검사하는 _check_class_stmt -> _check_function_body
+        # 경로는 이 메서드를 거치지 않으므로 class_stack이 그대로 유지된다.
+        outer_class_stack = self.class_stack
+        self.class_stack = []
+        try:
+            self._check_function_body(statement.params, statement.body, is_init=False, parent=scope)
+        finally:
+            self.class_stack = outer_class_stack
 
     def _check_return_stmt(self, statement, scope):
         if self.function_depth == 0:
