@@ -4,7 +4,7 @@ from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, IfStmt, PrintStmt, Va
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 
-from checker_helpers import make_var_decl
+from checker_helpers import make_class, make_function, make_var_decl
 
 
 def test_stores_empty_statements():
@@ -299,3 +299,64 @@ def test_check_detects_duplicate_declaration_when_if_then_and_else_are_bare_stat
 
     assert len(errors) == 1
     assert errors[0].message == "Already a variable with this name in this scope."
+
+
+# 함수/클래스 선언 이름도 이 스코프의 선언이다 - var와 동일한 중복 규칙을 따른다.
+
+def test_check_detects_duplicate_function_declaration_in_same_scope():
+    statements = [make_function("foo"), make_function("foo")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_duplicate_class_declaration_in_same_scope():
+    statements = [make_class("Robot"), make_class("Robot")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_function_name_colliding_with_existing_variable():
+    statements = [make_var_decl("foo"), make_function("foo")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_function_declaration_named_after_builtin():
+    # Func Array() {}  -- var Array = ...;와 동일하게 built-in을 가려버리므로 막아야 한다.
+    statements = [make_function("Array")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_detects_class_declaration_named_after_builtin():
+    statements = [make_class("Array")]
+    checker = CheckerUnit(statements)
+
+    errors = checker.check()
+
+    assert len(errors) == 1
+    assert errors[0].message == "Already a variable with this name in this scope."
+
+
+def test_check_allows_function_name_shadowing_outer_function_in_nested_block():
+    # Func foo(){} { Func foo(){} }  -- 다른 스코프라 shadowing으로 허용된다.
+    statements = [make_function("foo"), BlockStmt(statements=[make_function("foo")])]
+    checker = CheckerUnit(statements)
+
+    assert checker.check() == []
