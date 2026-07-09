@@ -1,3 +1,5 @@
+import os as _os
+from dataclasses import replace as _replace
 from typing import Any, Callable, Dict, Type
 
 from nodes import (
@@ -7,6 +9,7 @@ from nodes import (
     ForStmt,
     FunctionStmt,
     IfStmt,
+    ImportStmt,
     PrintStmt,
     ReturnStmt,
     Stmt,
@@ -16,6 +19,7 @@ from ._storage import Storage
 from ._signals import ReturnSignal
 from ._function import Function
 from ._class import LoxClass
+from ._namespace import LoxNamespace
 from .errors import NotAClassError
 
 from ._expr import evaluate, stringify
@@ -89,6 +93,56 @@ def _execute_class_stmt(stmt: ClassStmt, storage: Storage) -> None:
     storage.define(stmt.name.lexeme, klass)
 
 
+def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
+    """import 문을 실행한다.
+
+    Importer로 대상 파일을 assemble+check한 뒤, 격리된 Storage에서 실행해
+    선언된 이름들을 LoxNamespace로 묶어 alias 변수에 바인딩한다.
+
+    중첩 import 시 상대 경로를 올바르게 해석하도록 _current_base_dir를 전달하고,
+    모듈용 Storage에 이 값을 이어받아 설정한다.
+    """
+    base_dir = storage._current_base_dir
+    statements = storage._importer.import_module(
+        stmt.path.literal,
+        keyword=stmt.keyword,
+        base_dir=base_dir,
+    )
+
+    # 중첩 import 시 상대 경로의 기준 디렉터리를 계산한다.
+    path = stmt.path.literal
+    if base_dir and not _os.path.isabs(path):
+        resolved = _os.path.normpath(_os.path.join(base_dir, path))
+    else:
+        resolved = _os.path.normpath(path)
+    module_base_dir = _os.path.dirname(_os.path.abspath(resolved))
+
+    # 모듈 전용 Storage를 만들고 Importer 캐시를 공유한다.
+    module_storage = Storage(importer=storage._importer)
+    module_storage._current_base_dir = module_base_dir
+
+    # Storage 초기화 직후의 내장 이름(Array 등)은 namespace에 포함하지 않는다.
+    initial_names = set(module_storage._scopes[0].keys())
+
+    for module_stmt in statements:
+        execute(module_stmt, module_storage)
+
+    namespace = LoxNamespace(stmt.alias.lexeme)
+    for name, value in module_storage._scopes[0].items():
+        if name not in initial_names:
+            namespace.fields[name] = value
+
+    # 모듈 최상위 함수에 home_storage를 심어 모듈 globals를 볼 수 있게 한다.
+    # module_storage에도 업데이트해서 함수 내 재귀 호출 시에도 적용된다.
+    for name, value in namespace.fields.items():
+        if isinstance(value, Function):
+            updated = _replace(value, home_storage=module_storage)
+            namespace.fields[name] = updated
+            module_storage._scopes[0][name] = updated
+
+    storage.define(stmt.alias.lexeme, namespace)
+
+
 _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ExpressionStmt: _execute_expression_stmt,
     PrintStmt: _execute_print_stmt,
@@ -99,6 +153,7 @@ _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ReturnStmt: _execute_return_stmt,
     FunctionStmt: _execute_function_stmt,
     ClassStmt: _execute_class_stmt,
+    ImportStmt: _execute_import_stmt,
 }
 
 

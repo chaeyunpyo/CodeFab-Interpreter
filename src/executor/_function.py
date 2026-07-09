@@ -28,6 +28,9 @@ class Function(LoxCallable):
     declaration: FunctionStmt
     owner_class: Optional[Any] = None
     bound_instance: Optional[Any] = None
+    # import된 모듈 함수에만 설정된다. None이면 호출자 storage를 그대로 사용하고,
+    # 설정되어 있으면 모듈 자신의 storage로 호출 프레임을 만들어 모듈 globals에 접근한다.
+    home_storage: Optional[Storage] = None
 
     def bind(self, instance: Any) -> "Function":
         """this가 instance를 가리키도록 묶은 새 Function을 반환한다 (요구사항_정리/class.md)."""
@@ -41,18 +44,20 @@ class Function(LoxCallable):
         from ._stmt import execute
         from ._signals import ReturnSignal
 
-        storage.push_call_frame()
+        # 모듈 함수는 home_storage에서 호출 프레임을 만들어 모듈 globals를 그대로 볼 수 있게 한다.
+        effective = self.home_storage if self.home_storage is not None else storage
+        effective.push_call_frame()
         try:
             if self.bound_instance is not None:
-                storage.define("this", self.bound_instance)
-                storage.define("__class__", self.owner_class)
+                effective.define("this", self.bound_instance)
+                effective.define("__class__", self.owner_class)
             for param, argument in zip(self.declaration.params, arguments):
-                storage.define(param.lexeme, argument)
+                effective.define(param.lexeme, argument)
             try:
                 for body_stmt in self.declaration.body:
-                    execute(body_stmt, storage)
+                    execute(body_stmt, effective)
             except ReturnSignal as signal:
                 return signal.value
             return None
         finally:
-            storage.pop_call_frame()
+            effective.pop_call_frame()

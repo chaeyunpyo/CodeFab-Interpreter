@@ -24,6 +24,7 @@ from ._storage import Storage
 from ._callable import LoxCallable
 from ._array import FabArray, _parse_integer_value
 from ._class import LoxClass, LoxInstance
+from ._namespace import LoxNamespace
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
@@ -176,7 +177,7 @@ def _evaluate_this(expr: ThisExpr, storage: Storage) -> Any:
 
 def _evaluate_field_get(expr: FieldGetExpr, storage: Storage) -> Any:
     obj = evaluate(expr.object, storage)
-    if not isinstance(obj, LoxInstance):
+    if not isinstance(obj, (LoxInstance, LoxNamespace)):
         raise NotAnInstanceError(expr.name)
     return obj.get(expr.name)
 
