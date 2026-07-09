@@ -176,6 +176,27 @@ class TestEvaluateBinaryComparison:
         expr = BinaryExpr(LiteralExpr(5.0), tok(TokenType.BANG_EQUAL, "!="), LiteralExpr(3.0))
         assert evaluate(expr, storage) is True
 
+    def test_문자열_같은_비교는_TypeMismatchError_없이_참을_반환한다(self, storage):
+        # ==/!=는 숫자 전용이 아니라 어떤 타입이든 비교 가능해야 한다.
+        expr = BinaryExpr(LiteralExpr("hi"), tok(TokenType.EQUAL_EQUAL, "=="), LiteralExpr("hi"))
+        assert evaluate(expr, storage) is True
+
+    def test_문자열_같은_비교가_거짓인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr("hi"), tok(TokenType.EQUAL_EQUAL, "=="), LiteralExpr("bye"))
+        assert evaluate(expr, storage) is False
+
+    def test_불리언_같은_비교는_TypeMismatchError_없이_동작한다(self, storage):
+        expr = BinaryExpr(LiteralExpr(True), tok(TokenType.EQUAL_EQUAL, "=="), LiteralExpr(True))
+        assert evaluate(expr, storage) is True
+
+    def test_문자열_같지_않은_비교가_참인_경우(self, storage):
+        expr = BinaryExpr(LiteralExpr("hi"), tok(TokenType.BANG_EQUAL, "!="), LiteralExpr("bye"))
+        assert evaluate(expr, storage) is True
+
+    def test_타입이_다르면_같은_비교는_오류_없이_거짓을_반환한다(self, storage):
+        expr = BinaryExpr(LiteralExpr(1.0), tok(TokenType.EQUAL_EQUAL, "=="), LiteralExpr("1"))
+        assert evaluate(expr, storage) is False
+
 
 class TestEvaluateGrouping:
     def test_괄호_안_값을_그대로_반환한다(self, storage):
