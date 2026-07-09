@@ -28,6 +28,9 @@ from .errors import UndefinedVariableError
 class Storage:
     def __init__(self, locals: Optional[Dict[int, int]] = None, importer=None) -> None:
         # 인덱스 0이 전역 스코프, -1이 현재 가장 안쪽 스코프
+        # 여기 등록하는 이름은 builtin_names.BUILTIN_GLOBAL_NAMES와 반드시
+        # 맞춰야 한다 - Checker가 그 목록을 보고 최상위에서 재선언(var Array
+        # = ...;)을 막아준다 (tests/test_executor/test_storage.py에서 동기화 검증).
         from ._array import ARRAY_BUILTIN
         self._scopes: List[Dict[str, Any]] = [{"Array": ARRAY_BUILTIN}]
         # 함수 호출 진입 시 호출부의 지역 스코프 목록을 잠시 보관해두는 스택.
@@ -154,9 +157,15 @@ class Storage:
         호출부의 지역 스코프 체인은 함수 본문에서 보이면 안 되므로, 현재
         스코프 목록을 스택에 스냅샷으로 저장해두고 전역 스코프만 남긴 뒤
         그 위에 새 프레임(파라미터용 스코프)을 하나 쌓는다.
+
+        전역 스코프(index 0)는 복사하지 않고 같은 dict 객체를 그대로
+        넘긴다 - 그래야 함수 본문에서 전역 변수에 대입한 값이 호출이
+        끝난 뒤에도 유지된다(클로저는 없지만 전역 변수는 진짜 "전역"이어야
+        하므로). 파라미터/본문용 지역 스코프는 매 호출마다 새 dict라 재귀
+        호출끼리는 여전히 격리된다.
         """
         self._call_stack.append(self._scopes)
-        self._scopes = [dict(self._scopes[0]), {}]
+        self._scopes = [self._scopes[0], {}]
 
     def pop_call_frame(self) -> None:
         """함수 호출을 종료하고 호출부의 스코프 체인을 복원한다."""
