@@ -6,6 +6,10 @@ Public API:
     storage.define(name, value)  - 현재 스코프에 변수 선언 (VarDeclStmt 용)
     storage.set(name, value)     - 스코프 체인을 따라 기존 변수 업데이트 (AssignExpr 용)
     storage.get(name)            - 스코프 체인에서 변수 읽기
+    storage.get_resolved(node, name) - checker.locals에 거리가 기록돼 있으면
+        스코프 체인을 거슬러 올라가지 않고 그 위치를 바로 읽는다 (없으면 get()과 동일,
+        요구사항_정리/실행전_최적화.md 정적 바인딩).
+    storage.set_resolved(node, name, value) - get_resolved()의 대입 버전 (AssignExpr 용).
     storage.exists(name)         - 변수 존재 여부 확인
     storage.push_scope()         - 새 블록 스코프 진입 (BlockStmt 진입 시)
     storage.pop_scope()          - 현재 블록 스코프 종료 (BlockStmt 종료 시)
@@ -16,18 +20,22 @@ Public API:
     storage.scope_depth()        - 현재 스코프 체인의 깊이 (1이면 전역 스코프뿐)
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .errors import UndefinedVariableError
 
 
 class Storage:
-    def __init__(self) -> None:
+    def __init__(self, locals: Optional[Dict[int, int]] = None) -> None:
         # 인덱스 0이 전역 스코프, -1이 현재 가장 안쪽 스코프
         from ._array import ARRAY_BUILTIN
         self._scopes: List[Dict[str, Any]] = [{"Array": ARRAY_BUILTIN}]
         # 함수 호출 진입 시 호출부의 지역 스코프 목록을 잠시 보관해두는 스택.
         self._call_stack: List[List[Dict[str, Any]]] = []
+        # CheckerUnit.check() 이후의 checker.locals: id(VariableExpr/AssignExpr) -> distance.
+        # 파이프라인이 채워주며(Storage 생성 시 또는 나중에 속성으로), 없는 노드는
+        # 전역 참조/함수 경계를 넘는 참조로 보고 get()/set()의 전체 체인 탐색으로 처리한다.
+        self.locals: Dict[int, int] = locals if locals is not None else {}
 
     # ── 변수 선언 ─────────────────────────────────────────────────────────────
 
@@ -64,6 +72,28 @@ class Storage:
             if name in scope:
                 return scope[name]
         raise UndefinedVariableError(name)
+
+    # ── 정적 바인딩 조회/대입 (요구사항_정리/실행전_최적화.md) ──────────────────
+
+    def get_resolved(self, node: Any, name: str) -> Any:
+        """checker.locals에 기록된 거리로 스코프를 거슬러 올라가지 않고 바로 조회한다.
+
+        거리가 없는 노드(전역 참조, 함수 경계를 넘는 참조)는 get()의 전체
+        체인 탐색으로 그대로 처리한다 - 정적 바인딩은 지역 변수 조회에만
+        적용되는 최적화이기 때문이다.
+        """
+        distance = self.locals.get(id(node))
+        if distance is None:
+            return self.get(name)
+        return self._scopes[-(distance + 1)][name]
+
+    def set_resolved(self, node: Any, name: str, value: Any) -> None:
+        """get_resolved()의 대입 버전 (AssignExpr 용)."""
+        distance = self.locals.get(id(node))
+        if distance is None:
+            self.set(name, value)
+            return
+        self._scopes[-(distance + 1)][name] = value
 
     # ── 존재 여부 ─────────────────────────────────────────────────────────────
 
