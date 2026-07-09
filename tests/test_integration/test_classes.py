@@ -170,6 +170,20 @@ def test_accessing_undefined_property_raises_executor_error(run_source):
     assert output == "[Executor] Line 3: Undefined property 'power'\n"
 
 
+def test_calling_undefined_method_raises_executor_error(run_source):
+    """3일차 스펙: r.notExist() 처럼 존재하지 않는 메서드를 호출하면
+    런타임 오류가 나야 한다 (필드 읽기와 마찬가지로 Undefined property).
+    """
+    output = run_source(
+        """\
+        Class Robot { }
+        var r = Robot();
+        r.notExist();
+        """
+    )
+    assert output == "[Executor] Line 3: Undefined property 'notExist'\n"
+
+
 def test_field_access_on_non_instance_raises_executor_error(run_source):
     output = run_source(
         """\

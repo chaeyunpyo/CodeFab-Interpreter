@@ -181,6 +181,129 @@ def test_circular_import_reports_error_without_crashing(run_source, write_module
     assert "cyc_b.txt" in output
 
 
+# --- import 오류의 줄 번호는 "문제의 import문이 실제로 적힌 파일" 기준이다 ---
+# 최상위에서 그 파일을 부른 줄도, 오류가 물리적으로 위치한 파일의 다른 줄도 아니다.
+
+def test_import_syntax_error_reports_the_calling_imports_line_not_the_broken_lines(run_source, write_module):
+    """broken.txt는 3번째 줄에서 깨지지만, 보고되는 줄 번호는 그 3이 아니라
+    최상위에서 broken.txt를 부른 import문의 줄(4번째 줄)이어야 한다.
+    """
+    broken_path = write_module(
+        "broken.txt",
+        """\
+        Func add(a, b) { return a + b; }
+        Func sub(a, b) { return a - b; }
+        var x = ;
+        """,
+    )
+    output = run_source(
+        f"""\
+        print 1;
+        print 2;
+        print 3;
+        import "{broken_path}" alias b;
+        """
+    )
+    assert output == f"1\n2\n3\n[Import] Line 4: Imported file failed to import: {broken_path}\n"
+
+
+def test_import_error_two_levels_deep_uses_the_middle_files_own_line(run_source, write_module):
+    """main -> a.txt -> b.txt -> (없는 파일) 체인에서, 오류는 b.txt 자신의
+    import문 줄(3번째 줄)을 기준으로 보고되어야 한다 - main이나 a.txt의
+    import문 줄이 아니다. 세 파일의 import문을 서로 다른 줄에 두어
+    어느 파일 기준인지 헷갈릴 수 없게 한다.
+    """
+    b_path = write_module(
+        "b.txt",
+        """\
+        var pad1 = 1;
+        var pad2 = 2;
+        import "missing.txt" alias m;
+        """,
+    )
+    a_path = write_module(
+        "a.txt",
+        """\
+        var pad = 1;
+        import "b.txt" alias b;
+        """,
+    )
+    missing_path = b_path.replace("b.txt", "missing.txt")
+
+    output = run_source(f'import "{a_path}" alias a;')
+    assert output == f"[Import] Line 3: Import target file not found: {missing_path}\n"
+
+
+def test_import_checker_error_deep_in_chain_uses_the_offending_files_own_line(run_source, write_module):
+    """문법은 맞지만 Checker 정적 검사(여기서는 최상위 return)를 통과하지
+    못하는 bad.txt가 체인 중간에 있어도, 오류는 bad.txt를 직접 import하는
+    mid.txt의 import문 줄(1번째 줄) 기준이어야 한다.
+    """
+    bad_path = write_module(
+        "bad.txt",
+        """\
+        var noop = 1;
+        return 5;
+        """,
+    )
+    mid_path = write_module("mid.txt", 'import "bad.txt" alias bad;\n')
+
+    output = run_source(f'import "{mid_path}" alias mid;')
+    assert output == f"[Import] Line 1: Imported file failed to import: {bad_path}\n"
+
+
+# --- import 스트레스 테스트: 깊은 체인/넓은 팬아웃도 RecursionError 없이 끝까지 resolve되어야 한다 ---
+
+def test_deeply_chained_imports_resolve_without_hitting_recursion_limit(run_source, write_module):
+    """chain_0 -> chain_1 -> ... -> chain_100 처럼 100단계 깊이의 체인도
+    RecursionError 없이 끝까지 resolve되고, 값이 체인을 타고 올바르게 전달되어야 한다.
+    """
+    depth = 100
+    write_module(f"chain_{depth}.txt", f"var value = {depth};\n")
+    for i in reversed(range(depth)):
+        text = f"""\
+        import "chain_{i + 1}.txt" alias next;
+        var value = next.value;
+        """
+        chain_0_path = write_module(f"chain_{i}.txt", text)
+
+    output = run_source(
+        f"""\
+        import "{chain_0_path}" alias root;
+        print root.value;
+        """
+    )
+    assert output == f"{depth}\n"
+
+
+def test_many_sibling_imports_in_one_file_all_resolve_correctly(run_source, write_module):
+    """서로 무관한 30개의 모듈을 한 파일에서 동시에 import해도(순환도
+    중복도 아닌 순수 팬아웃) 전부 올바르게 resolve되어야 한다.
+    """
+    fan = 30
+    leaf_paths = [write_module(f"leaf_{i}.txt", f"var value = {i};\n") for i in range(fan)]
+    imports = "\n".join(f'import "{path}" alias m{i};' for i, path in enumerate(leaf_paths))
+    total = " + ".join(f"m{i}.value" for i in range(fan))
+
+    output = run_source(f"{imports}\nprint {total};")
+    assert output == f"{sum(range(fan))}\n"
+
+
+def test_long_circular_import_chain_is_detected_without_crashing(run_source, write_module, tmp_path):
+    """cyc_0 -> cyc_1 -> ... -> cyc_39 -> cyc_0 처럼 40단계를 돌아 순환하는
+    체인도 RecursionError로 죽지 않고 CircularImportError로 보고되어야 한다.
+    """
+    depth = 40
+    for i in range(depth):
+        write_module(f"cyc_{i}.txt", f'import "cyc_{(i + 1) % depth}.txt" alias next;\n')
+
+    root_path = str(tmp_path / "cyc_0.txt")
+    output = run_source(f'import "{root_path}" alias root;')
+    assert "Circular import detected" in output
+    assert "cyc_0.txt" in output
+    assert "cyc_39.txt" in output
+
+
 # --- 정적 오류 (요구사항_정리/import.md: Checker 담당분) ---
 # 실제 파일이 없어도 Checker 단계에서 먼저 걸러지므로 write_module 없이도 검증 가능하다.
 

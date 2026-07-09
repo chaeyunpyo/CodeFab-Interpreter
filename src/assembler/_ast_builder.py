@@ -1,6 +1,7 @@
 from ._expression_parser import ExpressionParser
 from ._statement_parser import StatementParser
 from ._token_stream import TokenStream
+from .errors import ExpressionTooDeeplyNestedError
 
 
 class AstBuilder:
@@ -19,5 +20,12 @@ class AstBuilder:
     def build(self):
         program = []
         while not self.tokens.is_at_end():
-            program.append(self.statements.parse_line())
+            # 표현식/블록이 극단적으로 깊게 중첩되면 재귀 하강 파싱이 파이썬
+            # 재귀 한도를 넘어 RecursionError로 죽는다(요구사항_정리 밖의
+            # 방어적 안전망). Executor의 StackOverflowError와 같은 이유로,
+            # 여기서 한 번만 잡아 깔끔한 AssemblerError로 감싼다.
+            try:
+                program.append(self.statements.parse_line())
+            except RecursionError:
+                raise ExpressionTooDeeplyNestedError(self.tokens.current()) from None
         return program
