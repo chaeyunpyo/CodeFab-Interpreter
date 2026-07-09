@@ -11,6 +11,8 @@ tests/test_cli/test_file_mode.py에 있는 기존 테스트들은 이 버그에 
 """
 
 from cli import run_file
+from nodes.token_type import TokenType
+from nodes.tokens import Token
 
 
 def test_run_file_executes_a_complex_program_with_recursion_and_array(tmp_path, capsys):
@@ -59,7 +61,10 @@ def test_run_file_reports_precise_error_for_if_without_body_at_eof(tmp_path, cap
 
     run_file(str(script))
 
+    # TokenType의 정수 값(auto())은 새 토큰이 추가되면 바뀌므로 하드코딩하지
+    # 않고, 실제 EOF 토큰의 repr을 그대로 사용해 비교한다.
+    eof_token = Token(TokenType.EOF, "", line=1)
     assert (
         capsys.readouterr().out
-        == "[Assembler] Line 1: Unexpected token: Token(type=<TokenType.EOF: 45>, lexeme='', literal=None, line=1)\n"
+        == f"[Assembler] Line 1: Unexpected token: {eof_token!r}\n"
     )
