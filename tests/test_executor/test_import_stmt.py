@@ -168,6 +168,32 @@ class TestImportCache:
         # Importer가 AST를 캐싱하므로 declaration(FunctionStmt)은 동일 객체를 가리킨다.
         assert ns_a.fields["f"].declaration is ns_b.fields["f"].declaration
 
+    def test_같은_파일_두번_import하면_동일_namespace_객체를_공유한다(self, tmp_path):
+        """AST뿐 아니라 실행 결과(namespace)도 경로별로 캐싱해서 한 번만
+        실행해야 한다 - 안 그러면 각 import 지점마다 독립된 전역 상태를
+        갖게 되어, 한쪽에서 바꾼 값을 다른 쪽에서 못 보는 문제가 생긴다.
+        """
+        mod = tmp_path / "mod.txt"
+        mod.write_text("var counter = 0;\nFunc inc() { counter = counter + 1; }", encoding="utf-8")
+        storage = _run(f'import "{mod}" alias a; import "{mod}" alias b;')
+        ns_a = storage.get("a")
+        ns_b = storage.get("b")
+
+        assert ns_a is ns_b
+
+        from executor import evaluate
+        from nodes.expr import CallExpr, FieldGetExpr, VariableExpr
+        from nodes.tokens import Token
+        from nodes.token_type import TokenType
+
+        inc_call = CallExpr(
+            callee=FieldGetExpr(object=VariableExpr(Token(TokenType.IDENTIFIER, "a")), name=Token(TokenType.IDENTIFIER, "inc")),
+            paren=Token(TokenType.LEFT_PAREN, "("),
+            arguments=[],
+        )
+        evaluate(inc_call, storage)
+        assert ns_b.fields["counter"] == 1.0
+
 
 # ── 중첩 import ───────────────────────────────────────────────────────────────
 

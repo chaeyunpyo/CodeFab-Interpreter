@@ -99,22 +99,37 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
     Importer로 대상 파일을 assemble+check한 뒤, 격리된 Storage에서 실행해
     선언된 이름들을 LoxNamespace로 묶어 alias 변수에 바인딩한다.
 
+    같은 경로를 다른 import문(다이아몬드 import 등)에서 이미 실행한
+    적이 있으면 다시 실행하지 않고 그때 만든 namespace를 그대로
+    재사용한다(Importer.namespace_cache) - 그래야 여러 곳에서 import한
+    같은 모듈이 전역 상태를 공유하는, 진짜 "모듈"다운 동작이 된다.
+    재실행하면 각 import 지점마다 독립된 전역 상태를 갖게 되어, 한쪽에서
+    바꾼 값을 다른 쪽에서 보지 못하는 문제가 생긴다.
+
     중첩 import 시 상대 경로를 올바르게 해석하도록 _current_base_dir를 전달하고,
     모듈용 Storage에 이 값을 이어받아 설정한다.
     """
     base_dir = storage._current_base_dir
-    statements, module_locals = storage._importer.import_module_with_locals(
-        stmt.path.literal,
-        keyword=stmt.keyword,
-        base_dir=base_dir,
-    )
-
-    # 중첩 import 시 상대 경로의 기준 디렉터리를 계산한다.
     path = stmt.path.literal
+
+    # 중첩 import 시 상대 경로의 기준 디렉터리를 계산한다 (Importer가
+    # 내부적으로 쓰는 정규화와 동일한 규칙).
     if base_dir and not _os.path.isabs(path):
         resolved = _os.path.normpath(_os.path.join(base_dir, path))
     else:
         resolved = _os.path.normpath(path)
+
+    cached_namespace = storage._importer.namespace_cache.get(resolved)
+    if cached_namespace is not None:
+        storage.define(stmt.alias.lexeme, cached_namespace)
+        return
+
+    statements, module_locals = storage._importer.import_module_with_locals(
+        path,
+        keyword=stmt.keyword,
+        base_dir=base_dir,
+    )
+
     module_base_dir = _os.path.dirname(_os.path.abspath(resolved))
 
     # 모듈 전용 Storage를 만들고 Importer 캐시를 공유한다. locals를 넘겨야
@@ -146,6 +161,7 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
             namespace.fields[name] = updated
             module_storage._scopes[0][name] = updated
 
+    storage._importer.namespace_cache[resolved] = namespace
     storage.define(stmt.alias.lexeme, namespace)
 
 

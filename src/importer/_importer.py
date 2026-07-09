@@ -59,6 +59,16 @@ class Importer:
         # import 대상 경로 -> (assemble+check까지 끝낸 Stmt 목록, 그 안의
         # 변수 거리(distance) 맵(checker.locals)) (Registry).
         self._module_cache = {}
+        # 경로 -> 실행 결과(LoxNamespace 등, Executor가 채워서 쓰는 캐시).
+        # Importer 자신은 이 값을 읽거나 쓰지 않는다 - assemble+check
+        # 결과 캐시(_module_cache)와 별개로, "같은 파일을 여러 import문에서
+        # import하면 한 번만 실행하고 상태를 공유해야 한다"는 요구사항
+        # (다이아몬드 import 등)을 위해 실행 계층(Executor)이 쓰는
+        # 자리만 마련해둔다. Assembler/Checker와 달리 Executor는 이
+        # Importer를 알아도 되는 계층이라(단방향: Assembler -> Checker
+        # -> Executor), 여기 두는 게 새 캐시 객체를 따로 만들어 곳곳에
+        # 넘기는 것보다 간단하다.
+        self.namespace_cache = {}
         # 지금 import 처리 중인 파일 경로 스택 (assemble+check 단계의 순환 import 감지용).
         self._importing = []
         # 지금 실행 중인 모듈 경로 스택 (실행 단계의 순환 import 감지용 안전망).

@@ -51,6 +51,33 @@ def test_import_variable_reflects_mutation_from_module_function(run_source, writ
     assert output == "2\n"
 
 
+def test_diamond_import_shares_state_across_import_sites(run_source, write_module):
+    """서로 다른 두 파일(b.txt/c.txt)이 같은 파일(d.txt)을 각각 import하면,
+    한쪽에서 d의 상태를 바꾼 게 다른 쪽에서도 보여야 한다 (진짜 모듈처럼
+    한 번만 실행되고 상태를 공유해야 함 - 각 import 지점마다 독립적으로
+    재실행되면 한쪽의 변경이 다른 쪽에 반영되지 않는다).
+    """
+    d_path = write_module(
+        "d.txt", "var counter = 0;\nFunc inc() { counter = counter + 1; }\n"
+    )
+    b_path = write_module(
+        "b.txt", f'import "{d_path}" alias d;\nFunc bump() {{ d.inc(); }}\n'
+    )
+    c_path = write_module(
+        "c.txt", f'import "{d_path}" alias d;\nFunc peek() {{ return d.counter; }}\n'
+    )
+    output = run_source(
+        f"""
+        import "{b_path}" alias b;
+        import "{c_path}" alias c;
+        b.bump();
+        b.bump();
+        print c.peek();
+        """
+    )
+    assert output == "2\n"
+
+
 def test_import_recursive_function(run_source, write_module):
     fact_path = write_module(
         "fact.txt", "Func fact(n) { if (n <= 1) return 1; return n * fact(n - 1); }\n"
