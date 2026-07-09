@@ -61,22 +61,22 @@ def test_function_parameter_visible_throughout_body(run_source):
 
 def test_calling_a_non_callable_value_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var x = 1;
         x();
         """
     )
-    assert output == "[Executor] Line 3: Can only call functions.\n"
+    assert output == "[Executor] Line 2: Can only call functions.\n"
 
 
 def test_calling_function_with_wrong_argument_count_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         Func add(a, b) { return a + b; }
         add(1);
         """
     )
-    assert output == "[Executor] Line 3: Expected 2 arguments but got 1.\n"
+    assert output == "[Executor] Line 2: Expected 2 arguments but got 1.\n"
 
 
 def test_mutual_recursion_between_two_functions(run_source):

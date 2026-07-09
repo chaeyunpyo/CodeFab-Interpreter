@@ -47,7 +47,7 @@ def test_line_numbers_stay_correct_after_a_multiline_string_literal(run_source):
 def test_execution_stops_after_the_first_runtime_error(run_source):
     """오류가 난 문장 이전까지는 출력되고, 오류 문장부터는 더 진행되지 않아야 한다."""
     output = run_source(
-        """
+        """\
         print "before";
         print 1 / 0;
         print "after";
@@ -56,6 +56,6 @@ def test_execution_stops_after_the_first_runtime_error(run_source):
     assert output == textwrap.dedent(
         """\
         before
-        [Executor] Line 3: 0으로 나눌 수 없습니다.
+        [Executor] Line 2: 0으로 나눌 수 없습니다.
         """
     )

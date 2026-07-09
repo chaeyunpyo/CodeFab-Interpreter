@@ -161,7 +161,7 @@ def test_import_inside_loop_raises_checker_error(run_source):
 
 def test_import_error_deep_inside_function_call_reports_cleanly(run_source):
     output = run_source(
-        """
+        """\
         Func loadIt() {
           import "does_not_exist_xyz.txt" alias m;
           return m;
@@ -170,12 +170,12 @@ def test_import_error_deep_inside_function_call_reports_cleanly(run_source):
         print wrapper();
         """
     )
-    assert output == "[Import] Line 3: Import target file not found: does_not_exist_xyz.txt\n"
+    assert output == "[Import] Line 2: Import target file not found: does_not_exist_xyz.txt\n"
 
 
 def test_import_error_inside_class_method_reports_cleanly(run_source):
     output = run_source(
-        """
+        """\
         Class Loader {
           load() {
             import "does_not_exist_xyz.txt" alias m;
@@ -186,4 +186,4 @@ def test_import_error_inside_class_method_reports_cleanly(run_source):
         l.load();
         """
     )
-    assert output == "[Import] Line 4: Import target file not found: does_not_exist_xyz.txt\n"
+    assert output == "[Import] Line 3: Import target file not found: does_not_exist_xyz.txt\n"
