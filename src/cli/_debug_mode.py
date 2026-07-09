@@ -244,8 +244,31 @@ def _handle_debug_command(debugger: Debugger, command: str, source_lines) -> Non
     elif name == "inspect":
         print("[DEBUG] 현재 스코프 변수")
         _print_inspect(debugger)
+    elif name == "help":
+        print("[DEBUG] 사용 가능한 명령어")
+        _print_help()
+    elif name == "version":
+        _print_version()
     else:
         print(f"알 수 없는 명령입니다: {command}")
+
+
+# 명령어 -> 사용법/설명. help 명령이 이 표를 그대로 출력한다 (공장제어쉘.md 명령어 표 기준).
+_HELP_ENTRIES = [
+    ("step", "현재 Stmt 실행 후 다음 Stmt에서 정지 (블록/분기/반복 내부 포함)"),
+    ("next", "현재 최상위 Stmt 실행 (블록 내부로 진입 X)"),
+    ("continue", "다음 breakpoint까지 실행"),
+    ("break <줄번호>", "해당 줄에 breakpoint 설정"),
+    ("breakpoints", "현재 설정된 breakpoint 목록 출력"),
+    ("remove <줄번호>", "breakpoint 해제"),
+    ("watch <변수명>", "해당 변수를 감시 목록에 추가"),
+    ("unwatch <변수명>", "감시 목록에서 제거"),
+    ("watches", "감시 중인 변수 목록과 값 출력"),
+    ("inspect", "현재 스코프의 모든 변수와 값 출력"),
+    ("help", "사용 가능한 명령어 목록과 설명 출력"),
+    ("version", "버전 정보 출력"),
+    ("exit / quit", "디버그 세션 종료"),
+]
 
 
 def _run_stepping_command(debugger: Debugger, action, source_lines) -> None:
@@ -301,3 +324,13 @@ def _print_inspect(debugger: Debugger) -> None:
         print("[전역] (없음)")
     for name, value in global_items.items():
         print(f"[전역] {name} = {value}")
+
+
+def _print_help() -> None:
+    for name, description in _HELP_ENTRIES:
+        print(f"  {name:<16} - {description}")
+
+
+def _print_version() -> None:
+    print("ErrorZero v1.0")
+    print("개발자: 채윤표, 이용진, 김문정, 강보경, 신경섭")

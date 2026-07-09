@@ -170,3 +170,34 @@ def test_run_debug_inspect_shows_local_variables_inside_a_block(monkeypatch, tmp
     assert "[로컬] a = 1.0" in out
     assert "[전역] ga = 3.0" in out
     assert "[로컬] b" not in out  # b는 아직 선언 전
+
+
+def test_run_debug_help_lists_available_commands(monkeypatch, tmp_path, capsys):
+    """help는 디버그 모드에서 쓸 수 있는 명령어 목록과 설명을 보여줘야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    inputs = iter(["help", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "step" in out
+    assert "watch" in out
+    assert "inspect" in out
+    assert "help" in out
+    assert "version" in out
+
+
+def test_run_debug_version_prints_version_and_developers(monkeypatch, tmp_path, capsys):
+    """version은 팀 버전 정보와 개발자 목록을 그대로 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    inputs = iter(["version", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "ErrorZero v1.0\n" in out
+    assert "개발자: 채윤표, 이용진, 김문정, 강보경, 신경섭\n" in out
