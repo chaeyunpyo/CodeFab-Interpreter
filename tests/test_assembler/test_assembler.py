@@ -1,6 +1,6 @@
 import pytest
 
-from assembler import Assembler
+from assembler import Assembler, ExpressionTooDeeplyNestedError
 from nodes.tokens import Token
 from nodes.token_type import TokenType
 from nodes import *
@@ -502,6 +502,23 @@ def test_assembler_for_loop():
             ),
         )
     ]
+
+
+# --- 재귀 하강 파싱 한도 (파이썬 RecursionError가 새어나오면 안 됨) ---
+
+def test_assembler_deeply_nested_expression_raises_expression_too_deeply_nested_error():
+    """재귀 하강 파서는 그룹핑 표현식을 한 단계 내려갈 때마다 파이썬 함수
+    호출을 여러 겹 소비하므로, 괄호를 극단적으로 깊게 중첩하면(100단계
+    안팎) 파이썬 기본 재귀 한도를 넘어 RecursionError가 난다.
+    AstBuilder.build()가 이를 잡아 ExpressionTooDeeplyNestedError로 감싸야
+    한다 - 파이썬 RecursionError가 그대로 새어나오면 안 된다.
+    """
+    depth = 100
+    source = f"print {'(' * depth}1{')' * depth};"
+    sut = Assembler(source)
+
+    with pytest.raises(ExpressionTooDeeplyNestedError):
+        sut.execute()
 
 
 def test_assembler_for_loop_without_initialization():
