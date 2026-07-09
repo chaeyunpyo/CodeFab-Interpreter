@@ -18,8 +18,8 @@ from nodes.stmt import BlockStmt, ForStmt, IfStmt
 
 
 class Debugger:
-    def __init__(self, statements):
-        self.storage = Storage()
+    def __init__(self, statements, locals=None):
+        self.storage = Storage(locals)
         self.breakpoints = set()
         self.watches = []
         self.finished = False
@@ -185,13 +185,14 @@ def run_debug(path: str) -> None:
         print(error)
         return
 
-    checker_errors = CheckerUnit(assembler.ast).check()
+    checker = CheckerUnit(assembler.ast)
+    checker_errors = checker.check()
     if checker_errors:
         for error in checker_errors:
             print(error)
         return
 
-    _debug_repl(Debugger(assembler.ast), source.splitlines())
+    _debug_repl(Debugger(assembler.ast, checker.locals), source.splitlines())
 
 
 def _debug_repl(debugger: Debugger, source_lines) -> None:
