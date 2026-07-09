@@ -1,10 +1,82 @@
 """Checker Unit 정의. 자세한 설명은 요구사항_정리/Unit.md 참고."""
 
 import dataclasses
+import operator
 
-from nodes.expr import Expr, SuperExpr, ThisExpr, VariableExpr
+from nodes.expr import (
+    AssignExpr,
+    BinaryExpr,
+    Expr,
+    GroupingExpr,
+    LiteralExpr,
+    SuperExpr,
+    ThisExpr,
+    UnaryExpr,
+    VariableExpr,
+)
 from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ImportStmt, ReturnStmt, VarDeclStmt
+from nodes.token_type import TokenType
 from source_error import SourceError
+
+_NOT_FOLDABLE = object()
+
+_NUMERIC_BINARY_OPS = {
+    TokenType.MINUS: operator.sub,
+    TokenType.STAR: operator.mul,
+    TokenType.GREATER: operator.gt,
+    TokenType.LESS: operator.lt,
+    TokenType.GREATER_EQUAL: operator.ge,
+    TokenType.LESS_EQUAL: operator.le,
+    TokenType.EQUAL_GREATER: operator.ge,
+    TokenType.EQUAL_LESS: operator.le,
+    TokenType.EQUAL_EQUAL: operator.eq,
+    TokenType.BANG_EQUAL: operator.ne,
+}
+
+
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _is_string(value):
+    return isinstance(value, str)
+
+
+def _fold_binary_value(operator_token, left, right):
+    """Executor의 _evaluate_binary와 같은 규칙으로 계산하되, 접을 수 없으면 _NOT_FOLDABLE."""
+    op = operator_token.type
+
+    if op == TokenType.SLASH:
+        if _is_number(left) and _is_number(right) and right != 0:
+            return left / right
+        return _NOT_FOLDABLE
+
+    if op == TokenType.PLUS:
+        if _is_string(left) and _is_string(right):
+            return left + right
+        if _is_number(left) and _is_number(right):
+            return left + right
+        return _NOT_FOLDABLE
+
+    numeric_op = _NUMERIC_BINARY_OPS.get(op)
+    if numeric_op is not None and _is_number(left) and _is_number(right):
+        return numeric_op(left, right)
+
+    return _NOT_FOLDABLE
+
+
+def _fold_unary_value(operator_token, value):
+    """Executor의 _evaluate_unary와 같은 규칙으로 계산하되, 접을 수 없으면 _NOT_FOLDABLE."""
+    op = operator_token.type
+
+    if op == TokenType.MINUS:
+        return -value if _is_number(value) else _NOT_FOLDABLE
+    if op == TokenType.PLUS:
+        return value if _is_number(value) else _NOT_FOLDABLE
+    if op == TokenType.BANG:
+        return not value
+
+    return _NOT_FOLDABLE
 
 
 class CheckerError(SourceError):
@@ -55,6 +127,83 @@ class ThisSuperFinder:
                 for item in value:
                     if isinstance(item, Expr):
                         self._walk(item, found)
+
+
+class VariableUseFinder:
+    """Expr 트리 안에서 변수 참조(VariableExpr)와 대입(AssignExpr)을 전부 찾는다."""
+
+    def find(self, expr):
+        found = []
+        self._walk(expr, found)
+        return found
+
+    def _walk(self, expr, found):
+        if not isinstance(expr, Expr):
+            return
+
+        if isinstance(expr, VariableExpr):
+            found.append(expr)
+            return
+
+        if isinstance(expr, AssignExpr):
+            found.append(expr)
+            self._walk(expr.value, found)
+            return
+
+        for field in dataclasses.fields(expr):
+            value = getattr(expr, field.name)
+            if isinstance(value, Expr):
+                self._walk(value, found)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, Expr):
+                        self._walk(item, found)
+
+
+class ConstantFolder:
+    """리터럴로만 구성된 Binary/Unary/Grouping을 접어서 LiteralExpr로 치환한다.
+
+    (요구사항_정리/실행전_최적화.md) 변수가 섞여 있거나, 접었을 때 런타임
+    오류가 나는 조합(0으로 나누기 등)은 원본 그대로 둔다.
+    """
+
+    def fold(self, expr):
+        if not isinstance(expr, Expr):
+            return expr
+
+        if isinstance(expr, GroupingExpr):
+            expr.expression = self.fold(expr.expression)
+            if isinstance(expr.expression, LiteralExpr):
+                return LiteralExpr(expr.expression.value)
+            return expr
+
+        if isinstance(expr, UnaryExpr):
+            expr.right = self.fold(expr.right)
+            if isinstance(expr.right, LiteralExpr):
+                folded = _fold_unary_value(expr.operator, expr.right.value)
+                if folded is not _NOT_FOLDABLE:
+                    return LiteralExpr(folded)
+            return expr
+
+        if isinstance(expr, BinaryExpr):
+            expr.left = self.fold(expr.left)
+            expr.right = self.fold(expr.right)
+            if isinstance(expr.left, LiteralExpr) and isinstance(expr.right, LiteralExpr):
+                folded = _fold_binary_value(expr.operator, expr.left.value, expr.right.value)
+                if folded is not _NOT_FOLDABLE:
+                    return LiteralExpr(folded)
+            return expr
+
+        for field in dataclasses.fields(expr):
+            value = getattr(expr, field.name)
+            if isinstance(value, Expr):
+                setattr(expr, field.name, self.fold(value))
+            elif isinstance(value, list):
+                for i, item in enumerate(value):
+                    if isinstance(item, Expr):
+                        value[i] = self.fold(item)
+
+        return expr
 
 
 class ScopeChecker:
@@ -122,6 +271,8 @@ class CheckerUnit:
         self.statements = statements
         self.expr_name_finder = ExprNameFinder()
         self.this_super_finder = ThisSuperFinder()
+        self.variable_use_finder = VariableUseFinder()
+        self.constant_folder = ConstantFolder()
         self._stmt_handlers = {
             VarDeclStmt: self._check_var_decl_stmt,
             BlockStmt: self._check_block_stmt,
@@ -140,6 +291,8 @@ class CheckerUnit:
         self.init_stack = []
         self.class_stack = []
         self.loop_depth = 0
+        self.locals = {}
+        self.scope_stack = []
         self.check_block(self.statements)
         return self.errors
 
@@ -150,9 +303,41 @@ class CheckerUnit:
 
     def check_statement(self, statement, scope):
         self._check_this_super_usage(statement)
+        self._resolve_variable_usage(statement)
+        self._fold_constants(statement)
         handler = self._stmt_handlers.get(type(statement))
         if handler is not None:
             handler(statement, scope)
+
+    def _resolve_variable_usage(self, statement):
+        """지역 변수 참조/대입마다 몇 단계 위 스코프에 있는지(distance) 계산해둔다.
+
+        (요구사항_정리/실행전_최적화.md) 최상위(전역)에서 선언/참조되는
+        변수나, 함수 안에서 함수 바깥을 참조하는 경우는 기록하지 않는다
+        (Storage가 호출마다 지역 스코프 체인을 초기화하기 때문).
+        """
+        for field in dataclasses.fields(statement):
+            value = getattr(statement, field.name)
+            if isinstance(value, Expr):
+                for node in self.variable_use_finder.find(value):
+                    self._resolve_variable_node(node)
+
+    def _resolve_variable_node(self, node):
+        name = node.name.lexeme
+        for distance, local_scope in enumerate(reversed(self.scope_stack)):
+            if name in local_scope:
+                self.locals[id(node)] = distance
+                return
+
+    def _declare_local(self, name):
+        if self.scope_stack:
+            self.scope_stack[-1].add(name)
+
+    def _fold_constants(self, statement):
+        for field in dataclasses.fields(statement):
+            value = getattr(statement, field.name)
+            if isinstance(value, Expr):
+                setattr(statement, field.name, self.constant_folder.fold(value))
 
     def _check_this_super_usage(self, statement):
         for field in dataclasses.fields(statement):
@@ -174,12 +359,18 @@ class CheckerUnit:
 
     def _check_var_decl_stmt(self, statement, scope):
         scope.check_var_decl(statement)
+        if statement.name is not None:
+            self._declare_local(statement.name.lexeme)
 
     def _check_block_stmt(self, statement, scope):
         if id(statement) in self.visited_blocks:
             return
         self.visited_blocks.add(id(statement))
-        self.check_block(statement.statements, parent=scope)
+        self.scope_stack.append(set())
+        try:
+            self.check_block(statement.statements, parent=scope)
+        finally:
+            self.scope_stack.pop()
 
     def _check_if_stmt(self, statement, scope):
         self.check_statement(statement.then_branch, scope)
@@ -231,8 +422,15 @@ class CheckerUnit:
     def _check_function_body(self, params, body, is_init, parent=None):
         # 파라미터도 이 함수(메서드) 스코프의 선언으로 취급한다.
         function_scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent)
+
+        # 함수 호출마다 Storage가 지역 스코프 체인을 초기화하므로(클로저
+        # 없음, src/executor/_function.py 참고) 거리 계산도 여기서 새로
+        # 시작해야 한다.
+        outer_scope_stack = self.scope_stack
+        self.scope_stack = [set()]
         for param in params:
             function_scope.declare_name(param.lexeme, param)
+            self._declare_local(param.lexeme)
 
         self.function_depth += 1
         self.init_stack.append(is_init)
@@ -242,3 +440,4 @@ class CheckerUnit:
         finally:
             self.init_stack.pop()
             self.function_depth -= 1
+            self.scope_stack = outer_scope_stack
