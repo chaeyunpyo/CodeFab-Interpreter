@@ -2,7 +2,8 @@
 
 import dataclasses
 
-from nodes.expr import Expr, SuperExpr, ThisExpr, VariableExpr
+from builtin_names import BUILTIN_GLOBAL_NAMES
+from nodes.expr import AssignExpr, Expr, SuperExpr, ThisExpr, VariableExpr
 from nodes.stmt import BlockStmt, ClassStmt, ForStmt, FunctionStmt, IfStmt, ImportStmt, ReturnStmt, VarDeclStmt
 
 from ._constant_folder import ConstantFolder
@@ -49,7 +50,12 @@ class CheckerUnit:
         return self.errors
 
     def check_block(self, statements, parent=None):
-        scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent)
+        # parent가 없으면 최상위(전역) 스코프다. Storage._scopes[0]에 항상
+        # 등록되는 built-in 이름(Array 등)을 재선언하려는 시도를 여기서
+        # 미리 막아둔다 - 그렇게 하지 않으면 var Array = 5;처럼 최상위에서
+        # 덮어써서 이후 Array(...) 호출이 전부 깨진다.
+        reserved_names = BUILTIN_GLOBAL_NAMES if parent is None else ()
+        scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent, reserved_names=reserved_names)
         for statement in statements:
             self.check_statement(statement, scope)
 
@@ -81,6 +87,14 @@ class CheckerUnit:
             if name in local_scope:
                 self.locals[id(node)] = distance
                 return
+
+        # 어떤 지역 스코프에도 없어 실제 전역(이름 기반 조회)을 가리키는
+        # 대입인데, 그 이름이 built-in(Array 등)이면 var Array = ...;뿐
+        # 아니라 Array = 5;처럼 선언 없는 대입으로도 전역 built-in이
+        # 영구히 망가지므로 여기서 막는다. 지역에서 Array라는 이름으로
+        # 그림자를 만들어 대입하는 건(위 for에서 먼저 찾히므로) 해당 없다.
+        if isinstance(node, AssignExpr) and name in BUILTIN_GLOBAL_NAMES:
+            self.errors.append(CheckerError(f"Cannot reassign built-in name '{name}'.", node.name))
 
     def _declare_local(self, name):
         if self.scope_stack:
@@ -146,6 +160,11 @@ class CheckerUnit:
         scope.check_import(statement)
 
     def _check_function_stmt(self, statement, scope):
+        # 함수 이름도 이 스코프의 선언이다 - 같은 스코프에 이미 있는
+        # var/Func/Class/import alias(또는 Array 같은 built-in)와
+        # 충돌하면 일반 중복 선언과 동일하게 오류가 난다.
+        scope.declare_name(statement.name.lexeme, statement.name)
+
         # 일반 Func 선언은 메서드로 바인딩되지 않은 Function이라 This/Super가
         # 실행 시점에 없다(클로저 없음, src/executor/_function.py 참고).
         # 메서드 본문 자체를 검사하는 _check_class_stmt -> _check_function_body
@@ -166,6 +185,9 @@ class CheckerUnit:
             self.errors.append(CheckerError("Can't return a value from an initializer.", statement.keyword))
 
     def _check_class_stmt(self, statement, scope):
+        # 클래스 이름도 이 스코프의 선언이다 (Func와 동일한 규칙).
+        scope.declare_name(statement.name.lexeme, statement.name)
+
         self._check_self_inheritance(statement)
 
         self.class_stack.append(statement.superclass is not None)

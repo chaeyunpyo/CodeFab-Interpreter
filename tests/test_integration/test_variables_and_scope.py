@@ -57,6 +57,37 @@ def test_inner_block_mutates_outer_variable(run_source):
     assert output == "1\n"
 
 
+def test_global_variable_mutated_inside_function_persists_after_call(run_source):
+    # 전역 변수는 함수 호출이 끝나도 값이 유지된다(클로저는 없지만
+    # 전역 dict 자체는 공유된다 - src/executor/_storage.py push_call_frame).
+    output = run_source(
+        """
+        var count = 0;
+        Func inc() { count = count + 1; }
+        inc();
+        inc();
+        print count;
+        """
+    )
+    assert output == "2\n"
+
+
+def test_local_variable_shadowing_builtin_name_does_not_affect_global_builtin(run_source):
+    output = run_source(
+        """
+        Func useLocalArray() {
+          var Array = "shadowed";
+          print Array;
+        }
+        useLocalArray();
+        var arr = Array(2);
+        arr[0] = 1;
+        print arr[0];
+        """
+    )
+    assert output == "shadowed\n1\n"
+
+
 def test_nested_scope_variable_lookup_order(run_source):
     output = run_source(
         """

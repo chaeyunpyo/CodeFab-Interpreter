@@ -5,6 +5,7 @@ from executor import (
     Function,
     LoxCallable,
     NotCallableError,
+    StackOverflowError,
     UndefinedVariableError,
     evaluate,
     execute,
@@ -110,6 +111,22 @@ class TestEvaluateCallExpr:
         execute(declare_function("f", [], [ret(var_expr("g"))]), storage)
         assert evaluate(call("f"), storage) == 100.0
 
+    def test_함수_안에서_전역_변수_대입은_호출이_끝난_뒤에도_유지된다(self, storage):
+        # count = count + 1;  -- 전역은 진짜 "전역"이라 함수 호출이 끝나도
+        # 대입한 값이 사라지지 않아야 한다 (클로저 없음과는 별개 - 클로저는
+        # 지역 스코프 체인 얘기고, 전역 dict 자체는 항상 공유된다).
+        storage.define("count", 0.0)
+        increment = AssignExpr(
+            name=tok(TokenType.IDENTIFIER, "count"),
+            value=BinaryExpr(var_expr("count"), tok(TokenType.PLUS, "+"), LiteralExpr(1.0)),
+        )
+        execute(declare_function("inc", [], [ExpressionStmt(expression=increment)]), storage)
+
+        evaluate(call("inc"), storage)
+        evaluate(call("inc"), storage)
+
+        assert storage.get("count") == 2.0
+
     def test_호출_종료_후_호출부_스코프가_그대로_복원된다(self, storage):
         execute(declare_function("f", [], []), storage)
         storage.push_scope()
@@ -137,6 +154,25 @@ class TestRecursion:
         ]
         execute(declare_function("fact", ["n"], body), storage)
         assert evaluate(call("fact", LiteralExpr(5.0)), storage) == 120.0
+
+    def test_재귀가_너무_깊으면_StackOverflowError를_내고_파이썬_RecursionError로_죽지_않는다(self, storage):
+        # Func count(n) { if (n <= 0) return 0; return 1 + count(n - 1); }
+        body = [
+            IfStmt(
+                BinaryExpr(var_expr("n"), tok(TokenType.LESS_EQUAL, "<="), LiteralExpr(0.0)),
+                ret(LiteralExpr(0.0)),
+            ),
+            ret(
+                BinaryExpr(
+                    LiteralExpr(1.0),
+                    tok(TokenType.PLUS, "+"),
+                    call("count", BinaryExpr(var_expr("n"), tok(TokenType.MINUS, "-"), LiteralExpr(1.0))),
+                )
+            ),
+        ]
+        execute(declare_function("count", ["n"], body), storage)
+        with pytest.raises(StackOverflowError):
+            evaluate(call("count", LiteralExpr(5000.0)), storage)
 
 
 # ── 런타임 오류 ────────────────────────────────────────────────────────────────

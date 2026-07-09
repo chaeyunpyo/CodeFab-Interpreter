@@ -148,3 +148,17 @@ class TestStorageForLoopIntegration:
             storage.pop_scope()
         assert storage.get("total") == 60
         assert storage.get("i") == 30
+
+
+class TestStorageBuiltinNamesMatchBuiltinNamesModule:
+    def test_초기_전역_스코프_이름이_builtin_names_모듈과_일치한다(self):
+        """builtin_names.BUILTIN_GLOBAL_NAMES가 Checker의 재정의 방지 목록으로
+        쓰이므로, Storage가 실제로 등록하는 이름과 항상 같아야 한다 - 어긋나면
+        Checker가 막지 못하는 built-in이 생기거나(보호 공백), 반대로 존재하지
+        않는 이름을 괜히 예약해버린다.
+        """
+        from builtin_names import BUILTIN_GLOBAL_NAMES
+
+        storage = Storage()
+
+        assert set(storage._scopes[0].keys()) == set(BUILTIN_GLOBAL_NAMES)
