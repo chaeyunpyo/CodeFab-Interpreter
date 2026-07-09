@@ -192,10 +192,14 @@ class TestImportErrors:
         의도적으로 건너뛴다. 그 함수가 모듈 최상위에서 곧바로 호출되어
         원래 import가 아직 실행 중인 채로 순환이 닫히면, 실행 단계
         안전망(Importer.executing)이 대신 잡아야 한다.
+
+        import 대상 파일 최상위에는 선언만 허용되므로(요구사항_정리/
+        import.md), 곧바로 호출하는 부수효과는 bare 문장이 아니라 변수
+        선언의 초기화식 자리에 담아서 표현한다.
         """
         a = tmp_path / "a.txt"
         b = tmp_path / "b.txt"
-        a.write_text(f'Func f() {{ import "{b}" alias b_alias; }} f();', encoding="utf-8")
-        b.write_text(f'Func g() {{ import "{a}" alias a_alias; }} g();', encoding="utf-8")
+        a.write_text(f'Func f() {{ import "{b}" alias b_alias; }} var _f_result = f();', encoding="utf-8")
+        b.write_text(f'Func g() {{ import "{a}" alias a_alias; }} var _g_result = g();', encoding="utf-8")
         with pytest.raises(CircularImportError):
             _run(f'import "{a}" alias a_alias;')

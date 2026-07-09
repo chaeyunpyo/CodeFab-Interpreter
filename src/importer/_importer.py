@@ -13,8 +13,8 @@ import os
 from contextlib import contextmanager
 
 from assembler import Assembler, AssemblerError
-from checker import CheckerUnit
-from nodes.stmt import BlockStmt, IfStmt, ImportStmt
+from checker import CheckerError, CheckerUnit
+from nodes.stmt import BlockStmt, ClassStmt, FunctionStmt, IfStmt, ImportStmt, VarDeclStmt
 
 from .errors import CircularImportError, ImportedFileNotFoundError, ModuleImportError
 
@@ -45,6 +45,15 @@ class Importer:
         BlockStmt: lambda stmt: stmt.statements,
         IfStmt: lambda stmt: [branch for branch in (stmt.then_branch, stmt.else_branch) if branch is not None],
     }
+
+    # import 대상 파일의 최상위에는 선언(다른 파일 import, 함수 선언, 전역
+    # 변수 선언, 클래스 선언)만 허용한다 (요구사항_정리/import.md). 그 외
+    # 구문(print, for, 최상위 expression 등)은 이 팀의 선택에 따라 오류로
+    # 처리한다. if/block은 선언 자체는 아니지만 import 위치 제한 규칙상
+    # import를 감싸는 용도로 어디서든 쓸 수 있어(반복문만 금지) 투명하게
+    # 뚫고 내려가 안쪽 내용만 검사한다 (_ALWAYS_EXECUTED_CHILDREN과 동일한
+    # "무조건 실행되는 구조" 기준).
+    _ALLOWED_TOP_LEVEL_STATEMENTS = (ImportStmt, FunctionStmt, VarDeclStmt, ClassStmt)
 
     def __init__(self):
         # import 대상 경로 -> (assemble+check까지 끝낸 Stmt 목록, 그 안의
@@ -111,6 +120,8 @@ class Importer:
             if checker_errors:
                 raise ModuleImportError(resolved, checker_errors, keyword)
 
+            self._check_declarations_only(statements, resolved, keyword)
+
             nested_base_dir = os.path.dirname(resolved)
             for import_stmt in self._iter_nested_import_stmts(statements):
                 self.import_module_with_locals(
@@ -121,6 +132,41 @@ class Importer:
 
         self._module_cache[resolved] = (statements, checker.locals)
         return self._module_cache[resolved]
+
+    def _check_declarations_only(self, statements, resolved, keyword):
+        """최상위 문장이 전부 선언(import/함수/변수/클래스 선언)인지 검사한다.
+
+        요구사항_정리/import.md: "그 외 구문 처리는 팀 자율" 조항 중 이
+        팀은 오류 처리를 선택했다.
+        """
+        illegal = list(self._find_illegal_statements(statements))
+        if not illegal:
+            return
+
+        errors = [
+            CheckerError(
+                "Import target file can only contain declarations "
+                f"(import/function/variable/class), found {type(statement).__name__}.",
+                statement,
+            )
+            for statement in illegal
+        ]
+        raise ModuleImportError(resolved, errors, keyword)
+
+    @classmethod
+    def _find_illegal_statements(cls, statements):
+        """허용된 선언이 아닌 문장을 찾는다. if/block은 선언은 아니지만
+        import를 감싸는 용도로 허용되므로 투명하게 뚫고 내려간다
+        (_iter_nested_import_stmts와 같은 기준).
+        """
+        for statement in statements:
+            if isinstance(statement, cls._ALLOWED_TOP_LEVEL_STATEMENTS):
+                continue
+            children_of = cls._ALWAYS_EXECUTED_CHILDREN.get(type(statement))
+            if children_of is not None:
+                yield from cls._find_illegal_statements(children_of(statement))
+                continue
+            yield statement
 
     @classmethod
     def _iter_nested_import_stmts(cls, statements):

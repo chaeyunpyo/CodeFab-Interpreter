@@ -2,7 +2,7 @@ import pytest
 
 from assembler import AssemblerError
 from checker import CheckerError
-from nodes import FunctionStmt, ReturnStmt, VarDeclStmt
+from nodes import ClassStmt, FunctionStmt, ReturnStmt, VarDeclStmt
 from nodes.token_type import TokenType
 from importer import CircularImportError, ImportedFileNotFoundError, Importer, ModuleImportError
 
@@ -314,3 +314,61 @@ def test_import_module_nested_syntax_error_raises_module_import_error(tmp_path):
     assert len(excinfo.value.errors) == 1
     assert isinstance(excinfo.value.errors[0], AssemblerError)
     assert excinfo.value.path.endswith("b.txt")
+
+
+# --- 선언만 허용 (요구사항_정리/import.md: "그 외 처리는 팀 자율" -> 이 팀은 오류 처리 선택) ---
+
+def test_import_module_rejects_top_level_print_statement(tmp_path):
+    """import 대상 파일 최상위에 print처럼 선언이 아닌 문장이 있으면
+    ModuleImportError로 알려야 한다.
+    """
+    path = _write(tmp_path / "lib.txt", 'print "side effect";\n')
+
+    with pytest.raises(ModuleImportError) as excinfo:
+        Importer().import_module(path)
+
+    assert excinfo.value.errors
+    assert all(isinstance(e, CheckerError) for e in excinfo.value.errors)
+    assert "PrintStmt" in str(excinfo.value.errors[0])
+
+
+def test_import_module_rejects_top_level_bare_expression_statement(tmp_path):
+    """함수 선언 뒤에 바로 호출하는 것처럼 선언이 아닌 표현식 문장도 막아야 한다."""
+    path = _write(tmp_path / "lib.txt", "Func f() { }\nf();\n")
+
+    with pytest.raises(ModuleImportError) as excinfo:
+        Importer().import_module(path)
+
+    assert excinfo.value.errors
+    assert "ExpressionStmt" in str(excinfo.value.errors[0])
+
+
+def test_import_module_allows_class_declaration_at_top_level(tmp_path):
+    """클래스 선언도 함수/변수 선언과 동등하게 허용되어야 한다."""
+    path = _write(tmp_path / "lib.txt", "Class Point { init(x) { This.x = x; } }\n")
+
+    statements = Importer().import_module(path)
+
+    assert isinstance(statements[0], ClassStmt)
+
+
+def test_import_module_allows_declarations_wrapped_in_if_block(tmp_path):
+    """if/block은 선언 자체는 아니지만 import 위치 제한 규칙상 어디서든
+    (반복문만 제외) import를 감쌀 수 있으므로, 그 안에 선언만 있다면
+    투명하게 통과시켜야 한다.
+    """
+    path = _write(tmp_path / "lib.txt", "if (true) {\n  var x = 1;\n}\n")
+
+    statements = Importer().import_module(path)
+
+    assert len(statements) == 1
+
+
+def test_import_module_rejects_non_declaration_hidden_inside_if_block(tmp_path):
+    """if/block으로 감싸도 그 안의 내용이 선언이 아니면 여전히 막아야 한다."""
+    path = _write(tmp_path / "lib.txt", 'if (true) {\n  print "x";\n}\n')
+
+    with pytest.raises(ModuleImportError) as excinfo:
+        Importer().import_module(path)
+
+    assert "PrintStmt" in str(excinfo.value.errors[0])

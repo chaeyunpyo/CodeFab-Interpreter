@@ -20,7 +20,7 @@
 | 분류 | 항목 | 설명 |
 | --- | --- | --- |
 | 위치 제한 | 반복문 내 사용 금지 | import문은 어디서든 가능하지만 반복문 내부에서는 불가 |
-| 파일 내용 제한 | 선언만 허용 | import 대상 파일에는 import/함수 선언/전역 변수 선언만 허용 (그 외 처리는 팀 자율) |
+| 파일 내용 제한 | 선언만 허용 | import 대상 파일 최상위에는 import/함수/변수/클래스 선언만 허용 (그 외 처리는 팀 자율 — **이 팀은 오류 처리를 선택**: 선언이 아닌 문장이 있으면 `ModuleImportError`. if/block은 선언은 아니지만 import를 감싸는 용도로는 투명하게 허용) |
 | 경로 제한 | 문자열 리터럴만 허용 | 파일 경로 자리에는 문자열 리터럴만 올 수 있음 |
 | 순환 참조 | 순환 import 금지 | a.txt가 b.txt를, b.txt가 다시 a.txt를 import하면 오류 |
 | 스코프 | scope 한정 적용 | import된 선언은 import문이 실행된 현재 scope에만 적용됨 |
@@ -83,32 +83,21 @@
   처리할 수 있다.
 - import문 안의 상대 경로는 프로세스의 작업 디렉터리가 아니라 그
   import문이 적힌 파일 기준으로 해석한다.
+- 대상 파일 최상위에 선언(import/함수/변수/클래스)이 아닌 문장이 있으면
+  마찬가지로 `ModuleImportError`(`CheckerError` 목록)로 알린다. if/block은
+  선언은 아니지만 반복문 제외 어디서든 import를 감쌀 수 있다는 위치
+  제한 규칙과 일관되게, 그 안의 내용만 재귀적으로 검사해서 투명하게
+  통과시킨다.
 - 대상 파일의 오류를 `AssemblerError`/`CheckerError` 그대로 흘려보내지
   않고 `ModuleImportError`로 감싸는 이유는, 그대로 흘려보내면 호출하는
   쪽(Executor)이 "최상위 프로그램 자체의 오류"와 "import한 파일의
   오류"를 타입만으로 구분할 수 없기 때문이다.
 
-## 구현 현황 (Executor)
-
-alias를 실제 스코프에 바인딩해서 실행하는 것도 구현 완료됨
-(`src/executor/_stmt.py`의 `_execute_import_stmt`, 테스트:
-`tests/test_executor/test_import_stmt.py`).
-
-- `Importer.import_module_with_locals(path)`로 대상 파일의 Stmt 목록과
-  `checker.locals`(변수 거리 맵)를 함께 받아, 격리된 모듈 전용 `Storage`
-  (`Storage(locals=module_locals, importer=...)`)에서 실행한다. locals를
-  같이 넘겨야 모듈 안의 변수 조회도 정적 바인딩(O(depth) → O(1))이
-  적용된다 — 안 넘기면 계산된 거리가 버려져서 매번 스코프 체인을 선형
-  탐색하는 폴백 경로만 타게 된다.
-- 실행 후 모듈 전역 스코프에 새로 선언된 이름들을 `LoxNamespace`로 묶어
-  alias 변수에 대입한다(`sum.add(1, 2)`처럼 `.`으로 접근). 모듈 최상위
-  함수에는 `home_storage`를 심어, 그 함수가 호출될 때 자신이 속한
-  모듈의 전역(다른 모듈 함수/변수)을 볼 수 있게 한다.
-- 중첩 import의 상대 경로는 `_current_base_dir`를 이어받아 그 import문이
-  적힌 파일 기준으로 해석하고, 실행 단계에서도 `Importer.executing()`
-  컨텍스트 매니저로 재진입(Func/Class 본문 속 import가 실행되며 만드는
-  순환)을 감지해 `CircularImportError`로 끊는다(정적 사전 순회가
-  의도적으로 건너뛰는 경우의 안전망).
+alias를 실제 스코프에 바인딩해서 실행하는 것도 Executor 쪽에 구현
+완료됨(`LoxNamespace`, 테스트: `tests/test_executor/test_import_stmt.py`,
+`tests/test_integration/test_imports.py`). import된 선언은 import문이
+실행된 현재 scope에만 적용되고(블록 밖에서는 alias 접근 불가), 정적
+바인딩 거리도 import된 모듈 자신의 실행에 그대로 적용된다.
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
