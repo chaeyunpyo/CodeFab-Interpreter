@@ -103,6 +103,31 @@ class TestBasicImport:
             _run(f'{{ import "{mod}" alias lib; }} var r = lib.x;')
 
 
+# ── 정적 바인딩 (요구사항_정리/실행전_최적화.md) ─────────────────────────────────
+
+class TestImportedModuleUsesStaticBinding:
+    def test_모듈_내부_지역_변수_조회는_이름_기반_체인_탐색을_거치지_않는다(self, tmp_path, mocker):
+        """import된 모듈 실행용 Storage에도 checker.locals가 전달되어야
+        모듈 안의 지역 변수(파라미터/블록 변수) 조회가 Storage.get()의 이름
+        기반 스코프 체인 탐색이 아니라 get_resolved()의 O(1) 경로를 탄다.
+
+        locals를 안 넘기면(과거 버그) checker.locals가 계산되고도 버려져서
+        모듈 안의 모든 지역 변수 조회가 매번 Storage.get()으로 폴백한다.
+        """
+        mod = tmp_path / "mod.txt"
+        mod.write_text(
+            "Func add(a, b) { { var result = a + b; return result; } }",
+            encoding="utf-8",
+        )
+
+        spy = mocker.patch.object(Storage, "get", wraps=Storage.get, autospec=True)
+        storage = _run(f'import "{mod}" alias sum; var r = sum.add(3, 4);')
+
+        module_local_lookups = [call for call in spy.call_args_list if call.args[1] in ("a", "b", "result")]
+        assert module_local_lookups == []
+        assert storage.get("r") == 7
+
+
 # ── 캐시 동작 ─────────────────────────────────────────────────────────────────
 
 class TestImportCache:
