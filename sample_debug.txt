@@ -1,0 +1,16 @@
+var total = 0;
+var count = 0;
+
+Func square(n) {
+    return n * n;
+}
+
+for (var i = 1; i <= 5; i = i + 1) {
+    var sq = square(i);
+    total = total + sq;
+    count = count + 1;
+    print sq;
+}
+
+print total;
+print count;
