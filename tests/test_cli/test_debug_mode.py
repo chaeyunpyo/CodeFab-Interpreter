@@ -72,6 +72,61 @@ def test_run_debug_watch_prints_variable_value_after_each_step(monkeypatch, tmp_
     assert "[WATCH] a = 2.0" in out
 
 
+def test_run_debug_next_skips_over_block_body(monkeypatch, tmp_path, capsys):
+    """next는 현재 최상위 Stmt(블록 포함)를 전부 실행하고 다음 최상위
+    Stmt에서 멈춰야 한다 - step처럼 블록 내부 각 문장마다 멈추면 안 된다.
+    """
+    script = tmp_path / "script.txt"
+    script.write_text(
+        "var i = 0;\n{\n  i = i + 1;\n  i = i + 1;\n}\nprint i;\n", encoding="utf-8"
+    )
+    inputs = iter(["step", "next", "step", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    # next 이후 곧바로 6번째 줄(print i)에서 멈춰야 하고, 블록 안 두 번째
+    # 대입문(4번째 줄)에서 별도로 멈춘 상태 출력이 나오면 안 된다.
+    assert out.count("i = i + 1;") == 1
+    assert "[DEBUG] 6번째 줄에서 정지 -> print i;" in out
+    assert "2\n" in out
+
+
+def test_run_debug_remove_breakpoint_clears_it(monkeypatch, tmp_path, capsys):
+    """remove <줄번호>로 해제한 breakpoint는 continue가 더 이상 멈추지 않아야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("var a = 1;\nprint a;\nprint a;\nprint a;\n", encoding="utf-8")
+    inputs = iter(["break 3", "break 4", "remove 3", "continue", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert out.count("1\n") == 2  # 2, 3번째 줄이 모두 실행되고 4번째 줄 직전에 멈췄다
+    assert "[DEBUG] 4번째 줄에서 정지 -> print a;" in out
+    assert "[DEBUG] 3번째 줄에서 정지" not in out
+
+
+def test_run_debug_watches_lists_watched_variables_and_unwatch_removes_one(
+    monkeypatch, tmp_path, capsys
+):
+    """watches는 감시 중인 변수 전체를 보여줘야 하고, unwatch로 뺀 변수는
+    이후 watches/자동 출력에서 더 이상 나오면 안 된다.
+    """
+    script = tmp_path / "script.txt"
+    script.write_text("var a = 1;\nvar b = 2;\n", encoding="utf-8")
+    inputs = iter(["watch a", "watch b", "watches", "unwatch a", "watches", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert out.count("[DEBUG] 감시 중인 변수") == 2
+    assert out.count("[WATCH] a = None") == 1
+    assert out.count("[WATCH] b = None") == 2
+
+
 def test_run_debug_break_and_continue_stops_at_breakpoint(monkeypatch, tmp_path, capsys):
     """break <줄번호> 이후 continue는 해당 줄 직전에서 멈춰야 한다."""
     # print 1; 처럼 리터럴만 있는 문장도 이제 파서가 line을 직접 기록해서 정확히 동작한다.

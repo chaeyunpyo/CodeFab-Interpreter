@@ -107,6 +107,23 @@ def test_function_reads_global_variable(run_source):
     assert output == "101\n"
 
 
+def test_function_writes_to_global_variable_persist_after_call_returns(run_source):
+    """함수는 클로저가 없어 지역 스코프 체인은 호출마다 초기화되지만,
+    전역 변수는 진짜 "전역"이라 함수 안에서 대입한 값이 호출이 끝난
+    뒤에도(return 없이도) 그대로 유지되어야 한다.
+    """
+    output = run_source(
+        """
+        var count = 0;
+        Func inc() { count = count + 1; }
+        inc();
+        inc();
+        print count;
+        """
+    )
+    assert output == "2\n"
+
+
 def test_function_with_multiple_return_points(run_source):
     output = run_source(
         """
