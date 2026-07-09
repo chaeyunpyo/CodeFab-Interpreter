@@ -142,14 +142,16 @@ arr[0] = 10;
 print arr[0];
 ```
 
-**import** (문법/정적 검사만 구현되어 있고, 실제 파일 로드·실행은 아직
-미구현이라 실행하면 `NotImplementedError`가 발생한다 - `요구사항_정리/개발_현황.md` 참고)
+**import** (대상 파일을 assemble+check 후 실행해, 선언된 이름들을
+alias에 바인딩한다 - 필드/메서드처럼 `alias.name`으로 접근)
 ```
 import "sum.txt" alias sum;
 var total = sum.add(1, 2);
 ```
 - import는 반복문 내부에서는 사용할 수 없다.
 - 같은 scope나 상위 scope에서 이미 import한 파일은 다시 import할 수 없다.
+- 대상 파일이 없거나(`ImportedFileNotFoundError`), 서로를 순환 참조하거나(`CircularImportError`),
+  문법/정적 검사를 통과하지 못하면(`ModuleImportError`) 오류가 발생한다.
 
 ## 기타 특이사항
 
