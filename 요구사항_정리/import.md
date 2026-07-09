@@ -99,6 +99,21 @@ alias를 실제 스코프에 바인딩해서 실행하는 것도 Executor 쪽에
 실행된 현재 scope에만 적용되고(블록 밖에서는 alias 접근 불가), 정적
 바인딩 거리도 import된 모듈 자신의 실행에 그대로 적용된다.
 
+`LoxNamespace.fields`는 import 시점 스냅샷 복사가 아니라
+`LiveModuleScope`(`src/executor/_namespace.py`)로 모듈의 실제 전역
+스코프 dict를 그대로 공유한다 - 그래야 `alias.inc()`처럼 모듈 안
+함수 호출로 전역이 바뀐 뒤 `alias.counter`로 필드에 직접 접근해도
+최신 값을 본다.
+
+**알려진 한계**: 같은 파일을 서로 다른 import문(예: 서로 다른 파일
+b.txt/c.txt가 각각 d.txt를 import)에서 여러 번 import하면, 파싱/정적
+검사 결과(AST)는 Importer가 경로별로 캐싱해 재사용하지만, **실행은
+import문을 만날 때마다 매번 새 Storage로 새로 실행**된다. 즉 d.txt의
+최상위 코드가 import 지점마다 다시 실행되어 서로 독립된 상태(별개의
+전역 변수 값)를 갖게 된다 - 진짜 모듈처럼 한 번만 실행하고 결과를
+공유하려면 실행 결과(namespace)까지 경로별로 캐싱해야 하는데, 아직
+미착수 상태다.
+
 ## 적용 가능한 디자인 패턴 (가산점)
 
 > 디자인 패턴은 여러 곳에서 발생될 수 있는 문제를 해결하는 일반화된

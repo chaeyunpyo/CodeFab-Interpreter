@@ -9,7 +9,7 @@ import pytest
 
 from assembler import Assembler
 from executor import Storage, execute
-from executor._namespace import LoxNamespace
+from executor._namespace import LiveModuleScope, LoxNamespace
 from executor.errors import UndefinedPropertyError
 from importer import CircularImportError, ImportedFileNotFoundError
 
@@ -52,6 +52,34 @@ class TestLoxNamespace:
     def test_repr_포함_alias_이름(self):
         ns = LoxNamespace("mylib")
         assert "mylib" in repr(ns)
+
+
+# ── LiveModuleScope 단위 테스트 ────────────────────────────────────────────────
+
+class TestLiveModuleScope:
+    def test_원본_dict_변경이_그대로_보인다(self):
+        """namespace.fields가 스냅샷 복사가 아니라 원본 dict를 그대로 공유해야 한다."""
+        scope = {"counter": 0}
+        view = LiveModuleScope(scope, excluded_names=())
+
+        scope["counter"] = 5
+
+        assert view["counter"] == 5
+
+    def test_제외된_이름은_보이지_않는다(self):
+        scope = {"Array": "builtin", "x": 1}
+        view = LiveModuleScope(scope, excluded_names={"Array"})
+
+        assert "Array" not in view
+        assert list(view) == ["x"]
+
+    def test_쓰기는_원본_dict로_그대로_전달된다(self):
+        scope = {}
+        view = LiveModuleScope(scope, excluded_names=())
+
+        view["y"] = 10
+
+        assert scope["y"] == 10
 
 
 # ── 기본 import 실행 ──────────────────────────────────────────────────────────

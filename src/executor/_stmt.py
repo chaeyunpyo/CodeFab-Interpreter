@@ -19,7 +19,7 @@ from ._storage import Storage
 from ._signals import ReturnSignal
 from ._function import Function
 from ._class import LoxClass
-from ._namespace import LoxNamespace
+from ._namespace import LiveModuleScope, LoxNamespace
 from .errors import NotAClassError
 
 from ._expr import evaluate, stringify
@@ -133,14 +133,14 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
         for module_stmt in statements:
             execute(module_stmt, module_storage)
 
-    namespace = LoxNamespace(stmt.alias.lexeme)
-    for name, value in module_storage._scopes[0].items():
-        if name not in initial_names:
-            namespace.fields[name] = value
+    # module_storage._scopes[0]을 복사하지 않고 그대로 공유한다 - 그래야
+    # alias.inc() 같은 모듈 안 함수 호출로 전역이 바뀐 뒤에도 alias.counter
+    # 처럼 필드에 직접 접근할 때 최신 값을 본다 (LiveModuleScope 참고).
+    namespace = LoxNamespace(stmt.alias.lexeme, fields=LiveModuleScope(module_storage._scopes[0], initial_names))
 
     # 모듈 최상위 함수에 home_storage를 심어 모듈 globals를 볼 수 있게 한다.
     # module_storage에도 업데이트해서 함수 내 재귀 호출 시에도 적용된다.
-    for name, value in namespace.fields.items():
+    for name, value in list(namespace.fields.items()):
         if isinstance(value, Function):
             updated = _replace(value, home_storage=module_storage)
             namespace.fields[name] = updated

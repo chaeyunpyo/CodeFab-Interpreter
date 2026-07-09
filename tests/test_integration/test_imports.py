@@ -32,6 +32,25 @@ def test_import_variable_via_alias(run_source, write_module):
     assert output == "3.14\n"
 
 
+def test_import_variable_reflects_mutation_from_module_function(run_source, write_module):
+    """alias.name으로 모듈 변수에 직접 접근할 때, 모듈 안 함수 호출로 바뀐
+    최신 값을 봐야 한다 (namespace.fields가 import 시점 스냅샷이 아니라
+    모듈의 실제 전역 스코프를 그대로 공유해야 함).
+    """
+    lib_path = write_module(
+        "lib.txt", "var counter = 0;\nFunc inc() { counter = counter + 1; }\n"
+    )
+    output = run_source(
+        f"""
+        import "{lib_path}" alias lib;
+        lib.inc();
+        lib.inc();
+        print lib.counter;
+        """
+    )
+    assert output == "2\n"
+
+
 def test_import_recursive_function(run_source, write_module):
     fact_path = write_module(
         "fact.txt", "Func fact(n) { if (n <= 1) return 1; return n * fact(n - 1); }\n"
