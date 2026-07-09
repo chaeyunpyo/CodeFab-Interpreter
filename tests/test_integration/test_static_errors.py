@@ -68,9 +68,9 @@ def test_static_errors_prevent_any_execution(run_source):
     """정적 오류가 있으면 그 전에 있는 print문도 실행되지 않아야 한다
     (Assembler/Checker 단계가 Executor보다 먼저 전체를 검사하기 때문에)."""
     output = run_source(
-        """
+        """\
         print "should not print";
         return 5;
         """
     )
-    assert output == "[Checker] Line 3: Can't return from top-level code.\n"
+    assert output == "[Checker] Line 2: Can't return from top-level code.\n"

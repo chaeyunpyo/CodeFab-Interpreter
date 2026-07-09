@@ -161,33 +161,33 @@ def test_this_super_keywords_are_case_sensitive(run_source):
 
 def test_accessing_undefined_property_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         Class Robot { }
         var r = Robot();
         print r.power;
         """
     )
-    assert output == "[Executor] Line 4: Undefined property 'power'\n"
+    assert output == "[Executor] Line 3: Undefined property 'power'\n"
 
 
 def test_field_access_on_non_instance_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var x = 10;
         x.field = 1;
         """
     )
-    assert output == "[Executor] Line 3: 필드 접근은 인스턴스에만 사용할 수 있습니다.\n"
+    assert output == "[Executor] Line 2: 필드 접근은 인스턴스에만 사용할 수 있습니다.\n"
 
 
 def test_inheriting_from_non_class_value_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var x = 10;
         Class Robot : x { }
         """
     )
-    assert output == "[Executor] Line 3: 클래스만 상속할 수 있습니다.\n"
+    assert output == "[Executor] Line 2: 클래스만 상속할 수 있습니다.\n"
 
 
 def test_subclass_without_init_uses_parent_constructor_automatically(run_source):
@@ -245,7 +245,7 @@ def test_this_inside_plain_func_nested_in_method_is_rejected(run_source):
     죽는다. Checker가 이걸 "클래스 밖"과 동일하게 미리 잡아야 한다.
     """
     output = run_source(
-        """
+        """\
         Class Robot {
           move() {
             Func helper() { print This.x; }
@@ -256,12 +256,12 @@ def test_this_inside_plain_func_nested_in_method_is_rejected(run_source):
         r.move();
         """
     )
-    assert output == "[Checker] Line 4: Can't use 'this' outside of a class.\n"
+    assert output == "[Checker] Line 3: Can't use 'this' outside of a class.\n"
 
 
 def test_super_inside_plain_func_nested_in_method_is_rejected(run_source):
     output = run_source(
-        """
+        """\
         Class Robot { speak() { print "base"; } }
         Class SpeedRobot : Robot {
           speak() {
@@ -273,4 +273,4 @@ def test_super_inside_plain_func_nested_in_method_is_rejected(run_source):
         sr.speak();
         """
     )
-    assert output == "[Checker] Line 5: Can't use 'super' outside of a class.\n"
+    assert output == "[Checker] Line 4: Can't use 'super' outside of a class.\n"

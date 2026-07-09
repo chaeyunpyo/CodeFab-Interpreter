@@ -46,32 +46,32 @@ def test_array_index_update_reads_and_writes(run_source):
 
 def test_array_index_out_of_range_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var arr = Array(2);
         print arr[5];
         """
     )
-    assert output == "[Executor] Line 3: 인덱스 5는 배열 범위(0~1)를 벗어났습니다.\n"
+    assert output == "[Executor] Line 2: 인덱스 5는 배열 범위(0~1)를 벗어났습니다.\n"
 
 
 def test_array_index_non_number_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var arr = Array(2);
         print arr["x"];
         """
     )
-    assert output == "[Executor] Line 3: 인덱스는 숫자여야 합니다. (받은 값: 'x')\n"
+    assert output == "[Executor] Line 2: 인덱스는 숫자여야 합니다. (받은 값: 'x')\n"
 
 
 def test_indexing_a_non_array_value_raises_executor_error(run_source):
     output = run_source(
-        """
+        """\
         var x = 10;
         print x[0];
         """
     )
-    assert output == "[Executor] Line 3: [] 연산은 배열에만 사용할 수 있습니다. (받은 값: 10.0)\n"
+    assert output == "[Executor] Line 2: [] 연산은 배열에만 사용할 수 있습니다. (받은 값: 10.0)\n"
 
 
 def test_array_creation_with_non_number_size_raises_executor_error(run_source):
