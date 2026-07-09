@@ -20,7 +20,7 @@
 | 어휘 분석 | `Tokenizer`   | 소스 코드 문자열을 Token 목록으로 변환                        | `src/assembler/_tokenizer.py` |
 | 구문 분석 | `AstBuilder`  | Token 목록을 재귀 하강 파싱하여 Stmt/Expr 트리를 생성            | `src/assembler/_ast_builder.py` |
 | 구문 분석 | `Assembler`   | Tokenizer + AstBuilder를 묶어서 소스 -> Stmt 트리(AST) 조립 | `src/assembler/_assembler.py` |
-| 의미 분석 | `CheckerUnit` | Stmt 트리를 DFS로 순회하며 실행 전 의미 오류(정적 오류)를 검사         | `src/checker.py`             |
+| 의미 분석 | `CheckerUnit` | Stmt 트리를 DFS로 순회하며 실행 전 의미 오류(정적 오류)를 검사         | `src/checker/`             |
 | 실행    | `Executor`    | Stmt/Expr 트리를 실제로 실행(평가)해서 결과를 만듦               | `src/executor/_stmt.py`, `_expr.py` |
 | 저장소   | `Storage`     | 변수 스코프(전역/블록)를 스택으로 관리하며 값을 저장·조회                | `src/executor/_storage.py`   |
 | 공통    | `SourceError` | Assembler/Checker/Executor 오류가 공통으로 상속하는 베이스 (Unit, 줄 번호) | `src/source_error.py`        |
