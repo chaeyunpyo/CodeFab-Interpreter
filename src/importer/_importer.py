@@ -13,12 +13,17 @@ import os
 
 from assembler import Assembler, AssemblerError
 from checker import CheckerUnit
+from executor.errors import ExecutionError
 from nodes.stmt import ImportStmt
-from source_error import SourceError
 
 
-class PipelineImportError(SourceError):
-    """import 대상 모듈을 assemble/check하는 과정에서 나는 오류의 공통 베이스."""
+class PipelineImportError(ExecutionError):
+    """import 대상 모듈을 assemble/check하는 과정에서 나는 오류의 공통 베이스.
+
+    ExecutionError를 상속해, Pipeline/Debugger가 실행 중 오류를 잡는
+    except ExecutionError 절에 import 오류도 함께 걸리게 한다. import
+    자체도 결국 "실행 중(import 문을 만났을 때) 발생하는 오류"이기 때문이다.
+    """
 
     UNIT = "Import"
 

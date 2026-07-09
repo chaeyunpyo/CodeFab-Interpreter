@@ -50,3 +50,16 @@ def test_pipeline_reports_executor_error():
 
     assert len(errors) == 1
     assert str(errors[0]) == "[Executor] Line 1: 0으로 나눌 수 없습니다."
+
+
+def test_pipeline_reports_import_error_instead_of_crashing():
+    # import 대상 파일이 없으면 Assembler/Checker는 통과하지만 실행 중
+    # ImportedFileNotFoundError(PipelineImportError)가 나는데, 이는
+    # ExecutionError의 형제 타입이 아니라 하위 타입이어야 run()이 예외를
+    # 그대로 던지지 않고 오류 리스트로 반환한다.
+    pipeline = Pipeline()
+
+    errors = pipeline.run('import "nope_does_not_exist.txt" alias x;')
+
+    assert len(errors) == 1
+    assert "Import target file not found" in str(errors[0])
