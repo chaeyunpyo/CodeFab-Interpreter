@@ -5,6 +5,7 @@ from executor import (
     Function,
     LoxCallable,
     NotCallableError,
+    StackOverflowError,
     UndefinedVariableError,
     evaluate,
     execute,
@@ -153,6 +154,25 @@ class TestRecursion:
         ]
         execute(declare_function("fact", ["n"], body), storage)
         assert evaluate(call("fact", LiteralExpr(5.0)), storage) == 120.0
+
+    def test_재귀가_너무_깊으면_StackOverflowError를_내고_파이썬_RecursionError로_죽지_않는다(self, storage):
+        # Func count(n) { if (n <= 0) return 0; return 1 + count(n - 1); }
+        body = [
+            IfStmt(
+                BinaryExpr(var_expr("n"), tok(TokenType.LESS_EQUAL, "<="), LiteralExpr(0.0)),
+                ret(LiteralExpr(0.0)),
+            ),
+            ret(
+                BinaryExpr(
+                    LiteralExpr(1.0),
+                    tok(TokenType.PLUS, "+"),
+                    call("count", BinaryExpr(var_expr("n"), tok(TokenType.MINUS, "-"), LiteralExpr(1.0))),
+                )
+            ),
+        ]
+        execute(declare_function("count", ["n"], body), storage)
+        with pytest.raises(StackOverflowError):
+            evaluate(call("count", LiteralExpr(5000.0)), storage)
 
 
 # ── 런타임 오류 ────────────────────────────────────────────────────────────────

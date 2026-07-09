@@ -78,3 +78,17 @@ class NotAClassError(ExecutionError):
 
     def __init__(self, token: Optional[Token] = None):
         super().__init__("클래스만 상속할 수 있습니다.", token)
+
+
+class StackOverflowError(ExecutionError):
+    """재귀 호출이 파이썬 호출 스택 한도를 넘었을 때. 예: 종료 조건 없이(혹은 아주 깊게) 재귀하는 함수.
+
+    Function.call()이 매 호출마다 파이썬 자체 스택을 소비하므로, 언어
+    차원의 재귀 깊이가 파이썬 기본 재귀 한도보다 훨씬 얕은 수준에서도
+    RecursionError로 죽을 수 있다. 그대로 두면 ExecutionError 계층에
+    속하지 않아 Pipeline/CLI가 못 잡고 그대로 크래시하므로, 여기서
+    깔끔한 런타임 오류로 감싼다.
+    """
+
+    def __init__(self, token: Optional[Token] = None):
+        super().__init__("Recursion too deep.", token)
