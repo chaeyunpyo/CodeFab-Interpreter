@@ -111,7 +111,7 @@ def _evaluate_logical(expr: LogicalExpr, storage: Storage) -> Any:
     return evaluate(expr.right, storage)
 
 
-# SLASH는 0으로 나누기 검사가 별도로 필요해서 이 dict에는 넣지 않고 따로 처리한다.
+# SLASH/PERCENT는 0으로 나누기 검사가 별도로 필요해서 이 dict에는 넣지 않고 따로 처리한다.
 # EQUAL_EQUAL/BANG_EQUAL도 숫자 여부와 무관하게 항상 비교 가능해야 하므로 따로 처리한다.
 _NUMERIC_BINARY_OPS: Dict[TokenType, Callable[[Any, Any], Any]] = {
     TokenType.PLUS: operator.add,
@@ -142,6 +142,12 @@ def _evaluate_binary(expr: BinaryExpr, storage: Storage) -> Any:
         if right == 0:
             raise DivideByZeroError("0으로 나눌 수 없습니다.", expr.operator)
         return left / right
+
+    if op == TokenType.PERCENT:
+        _check_number_operands(left, right, expr.operator)
+        if right == 0:
+            raise DivideByZeroError("0으로 나눈 나머지를 구할 수 없습니다.", expr.operator)
+        return left % right
 
     if op == TokenType.PLUS and _is_string(left) and _is_string(right):
         return left + right

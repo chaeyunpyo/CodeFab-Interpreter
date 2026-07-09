@@ -16,6 +16,7 @@ class Tokenizer:
         "-": TokenType.MINUS,
         "*": TokenType.STAR,
         "/": TokenType.SLASH,
+        "%": TokenType.PERCENT,
         "<": TokenType.LESS,
         ">": TokenType.GREATER,
         "=": TokenType.EQUAL,

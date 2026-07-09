@@ -90,6 +90,37 @@ def test_step3_operator_precedence():
     ]
 
 
+# --- 3-2단계: 나머지(%) 연산자도 *,/와 같은 우선순위로 파싱된다 (추가) ---
+
+def test_step3_2_percent_operator_has_same_precedence_as_star_and_slash():
+    """소스코드: a + b % 3;"""
+    tokens = [
+        Token(TokenType.IDENTIFIER, "a"),
+        Token(TokenType.PLUS, "+"),
+        Token(TokenType.IDENTIFIER, "b"),
+        Token(TokenType.PERCENT, "%"),
+        Token(TokenType.NUMBER, "3", literal=3.0),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    # a + (b % 3) 형태로 중첩되어야 함 (곱셈/나눗셈과 동일한 우선순위)
+    assert builder.build() == [
+        ExpressionStmt(
+            expression=BinaryExpr(
+                left=VariableExpr(Token(TokenType.IDENTIFIER, "a")),
+                operator=Token(TokenType.PLUS, "+"),
+                right=BinaryExpr(
+                    left=VariableExpr(Token(TokenType.IDENTIFIER, "b")),
+                    operator=Token(TokenType.PERCENT, "%"),
+                    right=LiteralExpr(3.0),
+                ),
+            )
+        )
+    ]
+
+
 # --- 3-1단계: 단항 연산자 (PDF p.36: !, +, -) ---
 
 @pytest.mark.parametrize(

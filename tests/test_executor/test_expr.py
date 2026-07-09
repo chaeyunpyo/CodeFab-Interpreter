@@ -79,6 +79,7 @@ class TestEvaluateBinaryArithmetic:
             (TokenType.MINUS, "-", 7.0, 3.0, 4.0),
             (TokenType.STAR, "*", 4.0, 5.0, 20.0),
             (TokenType.SLASH, "/", 10.0, 2.0, 5.0),
+            (TokenType.PERCENT, "%", 10.0, 3.0, 1.0),
         ],
     )
     def test_사칙연산_결과가_올바르다(self, storage, op_type, op_lexeme, left, right, expected):
@@ -89,6 +90,16 @@ class TestEvaluateBinaryArithmetic:
         # PDF p.88 : a = 3 / 0;
         expr = BinaryExpr(LiteralExpr(3.0), tok(TokenType.SLASH, "/"), LiteralExpr(0.0))
         with pytest.raises(DivideByZeroError):
+            evaluate(expr, storage)
+
+    def test_0으로_나머지를_구하면_예외를_발생시킨다(self, storage):
+        expr = BinaryExpr(LiteralExpr(3.0), tok(TokenType.PERCENT, "%"), LiteralExpr(0.0))
+        with pytest.raises(DivideByZeroError):
+            evaluate(expr, storage)
+
+    def test_나머지_연산에_문자열_피연산자를_쓰면_타입_오류가_발생한다(self, storage):
+        expr = BinaryExpr(LiteralExpr("hi"), tok(TokenType.PERCENT, "%"), LiteralExpr(2.0))
+        with pytest.raises(TypeMismatchError):
             evaluate(expr, storage)
 
     def test_숫자에서_문자열을_빼면_타입_오류가_발생한다(self, storage):

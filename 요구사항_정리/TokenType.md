@@ -4,7 +4,7 @@
 | --------- |---:|-------------------------------------------------------------------|
 | 괄호        | 6개 | `(`, `)`, `{`, `}`, `[`, `]`                                       |
 | 구분자       | 4개 | `;`, `,`, `.`, `:`                                                |
-| 산술 연산자    | 4개 | `+`, `-`, `*`, `/`                                                |
+| 산술 연산자    | 5개 | `+`, `-`, `*`, `/`, `%`                                            |
 | 대입/비교 연산자 | 8개 | `=`, `>`, `<`, `==`, `>=`, `<=`, `=<`, `=>`                        |
 | 단항 연산자    | 2개 | `!`, `!=`                                                          |
 | 예약어       | 17개 | `var`, `if`, `else`, `for`, `print`, `true`, `false`, `and`, `or`, `Func`, `Class`, `return`, `This`, `Super`, `instanceof`, `import`, `alias` |
@@ -14,9 +14,9 @@
 
 ## 총 TokenType
 
-* **총 45개**
+* **총 46개**
 
-> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`)은 function/class/정적 배열/import 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름.
+> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`, `PERCENT`)은 function/class/정적 배열/import/나머지 연산 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름.
 >
 > **예약어는 대소문자를 구분하며, 이 문서에 나열된 표기만 유효하다.**
 > 예를 들어 `This`/`Super`는 대문자로만 써야 하고 `this`/`super`(소문자)는
@@ -47,6 +47,7 @@
 | 산술 연산자 | MINUS         | -                | 뺄셈          |
 | 산술 연산자 | STAR          | *                | 곱셈          |
 | 산술 연산자 | SLASH         | /                | 나눗셈         |
+| 산술 연산자 | PERCENT       | %                | 나머지(모듈로) (추가) |
 | 대입/비교 연산자 | EQUAL         | =                | 대입 연산자      |
 | 대입/비교 연산자 | GREATER       | >                | 크다 비교       |
 | 대입/비교 연산자 | LESS          | <                | 작다 비교       |
