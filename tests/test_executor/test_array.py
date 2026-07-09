@@ -89,6 +89,30 @@ class TestArrayCreation:
         with pytest.raises(InvalidArraySizeError):
             evaluate(array_call(2.5), storage)
 
+    def test_잘못된_크기_오류에_호출_위치_토큰이_붙는다(self, storage):
+        # Array("hi") 같은 호출에서 InvalidArraySizeError.token이 None이면
+        # 오류 메시지가 "Line ?"로 나온다 — expr.paren이 반드시 붙어야 한다.
+        paren = tok(TokenType.LEFT_PAREN, "(")
+        expr = CallExpr(
+            callee=VariableExpr(tok(TokenType.IDENTIFIER, "Array")),
+            paren=paren,
+            arguments=[LiteralExpr("hi")],
+        )
+        with pytest.raises(InvalidArraySizeError) as exc_info:
+            evaluate(expr, storage)
+        assert exc_info.value.token is paren
+
+    def test_음수_크기_오류에_호출_위치_토큰이_붙는다(self, storage):
+        paren = tok(TokenType.LEFT_PAREN, "(")
+        expr = CallExpr(
+            callee=VariableExpr(tok(TokenType.IDENTIFIER, "Array")),
+            paren=paren,
+            arguments=[LiteralExpr(-1.0)],
+        )
+        with pytest.raises(InvalidArraySizeError) as exc_info:
+            evaluate(expr, storage)
+        assert exc_info.value.token is paren
+
     def test_인자_없이_호출하면_ArityMismatchError를_발생시킨다(self, storage):
         expr = CallExpr(
             callee=VariableExpr(tok(TokenType.IDENTIFIER, "Array")),
