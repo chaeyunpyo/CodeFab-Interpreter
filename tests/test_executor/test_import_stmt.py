@@ -9,7 +9,7 @@ import pytest
 
 from assembler import Assembler
 from executor import Storage, execute
-from executor._namespace import LoxNamespace
+from executor._namespace import LiveModuleScope, LoxNamespace
 from executor.errors import UndefinedPropertyError
 from importer import CircularImportError, ImportedFileNotFoundError
 
@@ -52,6 +52,34 @@ class TestLoxNamespace:
     def test_repr_포함_alias_이름(self):
         ns = LoxNamespace("mylib")
         assert "mylib" in repr(ns)
+
+
+# ── LiveModuleScope 단위 테스트 ────────────────────────────────────────────────
+
+class TestLiveModuleScope:
+    def test_원본_dict_변경이_그대로_보인다(self):
+        """namespace.fields가 스냅샷 복사가 아니라 원본 dict를 그대로 공유해야 한다."""
+        scope = {"counter": 0}
+        view = LiveModuleScope(scope, excluded_names=())
+
+        scope["counter"] = 5
+
+        assert view["counter"] == 5
+
+    def test_제외된_이름은_보이지_않는다(self):
+        scope = {"Array": "builtin", "x": 1}
+        view = LiveModuleScope(scope, excluded_names={"Array"})
+
+        assert "Array" not in view
+        assert list(view) == ["x"]
+
+    def test_쓰기는_원본_dict로_그대로_전달된다(self):
+        scope = {}
+        view = LiveModuleScope(scope, excluded_names=())
+
+        view["y"] = 10
+
+        assert scope["y"] == 10
 
 
 # ── 기본 import 실행 ──────────────────────────────────────────────────────────
@@ -139,6 +167,32 @@ class TestImportCache:
         ns_b = storage.get("b")
         # Importer가 AST를 캐싱하므로 declaration(FunctionStmt)은 동일 객체를 가리킨다.
         assert ns_a.fields["f"].declaration is ns_b.fields["f"].declaration
+
+    def test_같은_파일_두번_import하면_동일_namespace_객체를_공유한다(self, tmp_path):
+        """AST뿐 아니라 실행 결과(namespace)도 경로별로 캐싱해서 한 번만
+        실행해야 한다 - 안 그러면 각 import 지점마다 독립된 전역 상태를
+        갖게 되어, 한쪽에서 바꾼 값을 다른 쪽에서 못 보는 문제가 생긴다.
+        """
+        mod = tmp_path / "mod.txt"
+        mod.write_text("var counter = 0;\nFunc inc() { counter = counter + 1; }", encoding="utf-8")
+        storage = _run(f'import "{mod}" alias a; import "{mod}" alias b;')
+        ns_a = storage.get("a")
+        ns_b = storage.get("b")
+
+        assert ns_a is ns_b
+
+        from executor import evaluate
+        from nodes.expr import CallExpr, FieldGetExpr, VariableExpr
+        from nodes.tokens import Token
+        from nodes.token_type import TokenType
+
+        inc_call = CallExpr(
+            callee=FieldGetExpr(object=VariableExpr(Token(TokenType.IDENTIFIER, "a")), name=Token(TokenType.IDENTIFIER, "inc")),
+            paren=Token(TokenType.LEFT_PAREN, "("),
+            arguments=[],
+        )
+        evaluate(inc_call, storage)
+        assert ns_b.fields["counter"] == 1.0
 
 
 # ── 중첩 import ───────────────────────────────────────────────────────────────

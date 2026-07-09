@@ -99,6 +99,26 @@ alias를 실제 스코프에 바인딩해서 실행하는 것도 Executor 쪽에
 실행된 현재 scope에만 적용되고(블록 밖에서는 alias 접근 불가), 정적
 바인딩 거리도 import된 모듈 자신의 실행에 그대로 적용된다.
 
+`LoxNamespace.fields`는 import 시점 스냅샷 복사가 아니라
+`LiveModuleScope`(`src/executor/_namespace.py`)로 모듈의 실제 전역
+스코프 dict를 그대로 공유한다 - 그래야 `alias.inc()`처럼 모듈 안
+함수 호출로 전역이 바뀐 뒤 `alias.counter`로 필드에 직접 접근해도
+최신 값을 본다.
+
+같은 파일을 서로 다른 import문(예: 서로 다른 파일 b.txt/c.txt가 각각
+d.txt를 import하는 다이아몬드 import)에서 여러 번 import해도 d.txt의
+최상위 코드는 한 번만 실행되고 상태를 공유한다. 파싱/정적 검사
+결과(AST)는 `Importer._module_cache`가 경로별로 캐싱하지만, 그것과는
+별개로 실행 결과(`LoxNamespace`)도 `Importer.namespace_cache`(경로 ->
+LoxNamespace)에 캐싱해, 이미 실행된 경로를 다시 만나면 재실행 없이
+캐시된 namespace를 그대로 재사용한다(`src/executor/_stmt.py`의
+`_execute_import_stmt`). 그래서 b.txt에서 `d.inc()`로 바꾼 값을
+c.txt에서 `d.counter`로 읽어도 최신 값을 본다(테스트:
+`tests/test_integration/test_imports.py::test_diamond_import_shares_state_across_import_sites`,
+`tests/test_executor/test_import_stmt.py::TestImportCache`). 클래스는
+namespace가 공유되어도 인스턴스별 `fields`는 독립적이라 인스턴스
+격리는 영향받지 않는다.
+
 ## 적용 가능한 디자인 패턴 (가산점)
 
 > 디자인 패턴은 여러 곳에서 발생될 수 있는 문제를 해결하는 일반화된

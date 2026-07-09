@@ -169,6 +169,20 @@ class TestIndexGet:
         with pytest.raises(NotAnArrayError):
             evaluate(index_get("x", 0.0), storage)
 
+    def test_대상이_인스턴스면_오류_메시지가_전체_repr을_덤프하지_않는다(self, storage):
+        """LoxInstance/LoxClass는 커스텀 __repr__이 있어야 한다 - 기본
+        dataclass repr은 methods/필드까지 전부 펼쳐서 오류 메시지가
+        읽을 수 없을 정도로 길어진다.
+        """
+        from executor._class import LoxClass, LoxInstance
+
+        instance = LoxInstance(LoxClass("Robot"))
+        storage.define("r", instance)
+        with pytest.raises(NotAnArrayError) as excinfo:
+            evaluate(index_get("r", 0.0), storage)
+        assert "Robot instance" in str(excinfo.value)
+        assert "fields=" not in str(excinfo.value)
+
 
 # ── 인덱스 쓰기 ───────────────────────────────────────────────────────────────
 

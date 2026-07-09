@@ -45,11 +45,22 @@ class LoxClass(LoxCallable):
             initializer.bind(instance).call(storage, arguments)
         return instance
 
+    def __repr__(self) -> str:
+        # dataclass 기본 repr은 methods/superclass까지 재귀적으로 전부
+        # 펼쳐서 print나 오류 메시지(예: NotAnArrayError)에 쓰기엔 너무
+        # 장황하다. 클래스 이름만 짧게 보여준다.
+        return self.name
+
 
 @dataclass
 class LoxInstance:
     klass: LoxClass
     fields: Dict[str, Any] = field(default_factory=dict)
+
+    def __repr__(self) -> str:
+        # 위 LoxClass.__repr__과 같은 이유로, 클래스 전체가 아니라
+        # "<클래스명> instance" 정도로만 짧게 보여준다.
+        return f"{self.klass.name} instance"
 
     def get(self, name: Token) -> Any:
         """필드를 우선 찾고, 없으면 메서드를 찾아 this를 바인딩해 반환한다.

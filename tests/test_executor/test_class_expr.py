@@ -402,3 +402,15 @@ class TestInstanceOfExpr:
         storage.define("notClass", 10.0)
         with pytest.raises(NotAClassError):
             evaluate(instanceof_expr(var_expr("r"), var_expr("notClass")), storage)
+
+
+class TestReprIsHumanReadable:
+    """LoxClass/LoxInstance는 print나 오류 메시지에서 짧게 보여야 한다 -
+    기본 dataclass repr은 methods/필드까지 전부 펼쳐서 너무 장황하다.
+    """
+
+    def test_LoxClass_repr은_클래스_이름만_보여준다(self):
+        assert repr(LoxClass("Robot")) == "Robot"
+
+    def test_LoxInstance_repr은_클래스명과_instance만_보여준다(self):
+        assert repr(LoxInstance(LoxClass("Robot"))) == "Robot instance"
