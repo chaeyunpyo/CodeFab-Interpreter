@@ -1,0 +1,129 @@
+"""함수 선언/호출/return/재귀 관련 블랙박스 테스트. (요구사항_정리/function.md)"""
+
+import textwrap
+
+
+def test_function_declaration_and_call(run_source):
+    output = run_source(
+        """
+        Func add(a, b) { return a + b; }
+        print add(1, 2);
+        """
+    )
+    assert output == "3\n"
+
+
+def test_function_without_return_yields_null(run_source):
+    output = run_source(
+        """
+        Func f() { }
+        print f();
+        """
+    )
+    assert output == "null\n"
+
+
+def test_recursive_function(run_source):
+    output = run_source(
+        """
+        Func fact(n) { if (n <= 1) return 1; return n * fact(n - 1); }
+        print fact(5);
+        """
+    )
+    assert output == "120\n"
+
+
+def test_nested_function_calls(run_source):
+    output = run_source(
+        """
+        Func square(x) { return x * x; }
+        Func sumSquares(a, b) { return square(a) + square(b); }
+        print sumSquares(3, 4);
+        """
+    )
+    assert output == "25\n"
+
+
+def test_function_parameter_visible_throughout_body(run_source):
+    output = run_source(
+        """
+        Func f(x) { print x; return x + 1; }
+        print f(5);
+        """
+    )
+    assert output == textwrap.dedent(
+        """\
+        5
+        6
+        """
+    )
+
+
+def test_calling_a_non_callable_value_raises_executor_error(run_source):
+    output = run_source(
+        """
+        var x = 1;
+        x();
+        """
+    )
+    assert output == "[Executor] Line 3: Can only call functions.\n"
+
+
+def test_calling_function_with_wrong_argument_count_raises_executor_error(run_source):
+    output = run_source(
+        """
+        Func add(a, b) { return a + b; }
+        add(1);
+        """
+    )
+    assert output == "[Executor] Line 3: Expected 2 arguments but got 1.\n"
+
+
+def test_mutual_recursion_between_two_functions(run_source):
+    output = run_source(
+        """
+        Func isEven(n) { if (n == 0) return true; return isOdd(n - 1); }
+        Func isOdd(n) { if (n == 0) return false; return isEven(n - 1); }
+        print isEven(4);
+        print isOdd(4);
+        """
+    )
+    assert output == textwrap.dedent(
+        """\
+        true
+        false
+        """
+    )
+
+
+def test_function_reads_global_variable(run_source):
+    output = run_source(
+        """
+        var g = 100;
+        Func f() { return g + 1; }
+        print f();
+        """
+    )
+    assert output == "101\n"
+
+
+def test_function_with_multiple_return_points(run_source):
+    output = run_source(
+        """
+        Func sign(n) {
+          if (n > 0) return 1;
+          if (n < 0) return -1;
+          return 0;
+        }
+        print sign(5);
+        print sign(-5);
+        print sign(0);
+        """
+    )
+    assert output == textwrap.dedent(
+        """\
+        1
+        -1
+        0
+        """
+    )
