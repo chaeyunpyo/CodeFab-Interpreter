@@ -28,6 +28,7 @@ from ._namespace import LoxNamespace
 from .errors import (
     ArityMismatchError,
     DivideByZeroError,
+    ExecutionError,
     IndexOutOfRangeError,
     InvalidIndexTypeError,
     NotAClassError,
@@ -159,7 +160,12 @@ def _evaluate_call(expr: CallExpr, storage: Storage) -> Any:
     if len(arguments) != callee.arity():
         raise ArityMismatchError(callee.arity(), len(arguments), expr.paren)
 
-    return callee.call(storage, arguments)
+    try:
+        return callee.call(storage, arguments)
+    except ExecutionError as e:
+        if e.token is None:
+            e.token = expr.paren
+        raise
 
 
 def _check_integer_index(value: Any, token) -> int:
