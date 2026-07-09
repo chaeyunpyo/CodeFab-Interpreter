@@ -308,6 +308,33 @@ def test_step19_tracks_line_numbers_across_newlines():
         Token(TokenType.EOF, "", line=2),
     ]
 
+
+# --- 문자열 리터럴 미종료/줄바꿈 처리 ---
+
+
+def test_unterminated_string_raises_tokenizer_error():
+    """닫는 "를 못 찾고 EOF에 도달하면, 잘못된 값을 조용히 만들지 말고 오류를 내야 한다."""
+    tokenizer = Tokenizer('"abc')
+
+    with pytest.raises(TokenizerError):
+        tokenizer.tokenize()
+
+
+def test_string_spanning_multiple_lines_advances_line_counter():
+    """문자열 안에 있는 개행도 메인 루프와 동일하게 line을 증가시켜야 한다."""
+    tokenizer = Tokenizer('"line1\nline2"\nvar a = 1;')
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.STRING, '"line1\nline2"', literal="line1\nline2", line=1),
+        Token(TokenType.VAR, "var", line=3),
+        Token(TokenType.IDENTIFIER, "a", line=3),
+        Token(TokenType.EQUAL, "=", line=3),
+        Token(TokenType.NUMBER, "1", literal=1.0, line=3),
+        Token(TokenType.SEMICOLON, ";", line=3),
+        Token(TokenType.EOF, "", line=3),
+    ]
+
 # --- 20단계: 추가 - 대괄호 (정적 배열 인덱싱) ---
 
 @pytest.mark.parametrize(

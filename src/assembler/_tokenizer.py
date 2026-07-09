@@ -140,13 +140,21 @@ class Tokenizer:
 
     def _scan_string(self):
         start = self.current
+        start_line = self.line
         self.current += 1
         while self.current < len(self.source) and self.source[self.current] != '"':
+            if self.source[self.current] == "\n":
+                self.line += 1
             self.current += 1
+
+        if self.current >= len(self.source):
+            raise TokenizerError(
+                "Unterminated string", Token(TokenType.STRING, self.source[start:self.current], line=start_line)
+            )
 
         self.current += 1
         lexeme = self.source[start:self.current]
-        self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1], line=self.line))
+        self.tokens.append(Token(TokenType.STRING, lexeme, literal=lexeme[1:-1], line=start_line))
 
     def _skip_line_comment(self):
         while self.current < len(self.source) and self.source[self.current] != "\n":
