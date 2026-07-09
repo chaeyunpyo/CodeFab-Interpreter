@@ -29,6 +29,21 @@ def test_unterminated_string_raises_assembler_error(run_source):
     assert output == "[Assembler] Line 1: Unterminated string\n"
 
 
+def test_deeply_nested_expression_raises_assembler_error_instead_of_crashing(run_source):
+    """재귀 하강 파서는 중첩 한 단계마다 파이썬 함수 호출을 여러 겹
+    소비하므로, 괄호를 극단적으로 깊게 중첩한 표현식은 파이썬 기본 재귀
+    한도보다 훨씬 얕은 수준(중첩 100단계 안팎)에서 RecursionError로 죽을
+    수 있다. Executor의 StackOverflowError와 같은 이유로, 여기서도
+    RecursionError가 그대로 REPL을 죽이지 않고 깔끔한 Assembler 오류로
+    보고되어야 한다.
+    """
+    depth = 100
+    expression = "(" * depth + "1" + ")" * depth
+
+    output = run_source(f"print {expression};")
+    assert output == "[Assembler] Line 1: Expression or block nested too deeply.\n"
+
+
 def test_duplicate_parameter_names_raise_checker_error(run_source):
     output = run_source("Func f(a, a) { return a; }")
     assert output == "[Checker] Line 1: Already a variable with this name in this scope.\n"

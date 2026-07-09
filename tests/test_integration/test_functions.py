@@ -33,6 +33,26 @@ def test_recursive_function(run_source):
     assert output == "120\n"
 
 
+def test_too_deep_recursion_reports_stack_overflow_instead_of_crashing(run_source):
+    """Function.call()이 호출마다 파이썬 자체 콜스택을 소비하기 때문에,
+    언어 레벨 재귀 깊이는 파이썬 기본 재귀 한도(1000)보다 훨씬 얕은
+    수준(대략 100단계 안팎)에서 이미 바닥난다. 94315c8 이전에는 여기서
+    처리되지 않은 RecursionError가 그대로 터져 나와 REPL 전체가
+    죽었지만, 지금은 StackOverflowError(ExecutionError)로 감싸져 다른
+    런타임 오류와 똑같이 깔끔한 오류 메시지로 보고되어야 한다.
+    """
+    output = run_source(
+        """
+        Func count(n) {
+          if (n <= 0) return 0;
+          return 1 + count(n - 1);
+        }
+        print count(150);
+        """
+    )
+    assert output == "[Executor] Line 4: Recursion too deep.\n"
+
+
 def test_nested_function_calls(run_source):
     output = run_source(
         """

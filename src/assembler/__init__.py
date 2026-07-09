@@ -7,12 +7,14 @@ Public API:
     MissingTokenError           - 문법 규칙상 있어야 할 토큰이 없을 때
     UnexpectedTokenError        - 어떤 문법 규칙으로도 해석할 수 없는 토큰을 만났을 때
     InvalidAssignmentTargetError - 대입 연산자(=)의 좌변이 변수가 아닐 때
+    ExpressionTooDeeplyNestedError - 표현식/블록이 재귀 하강 파서 한도를 넘게 중첩됐을 때
     AstBuilder                  - Token 목록을 재귀 하강 파싱하여 Stmt/Expr 트리를 생성
     Tokenizer                   - 소스 코드 문자열을 Token 목록으로 변환
 """
 
 from .errors import (
     AssemblerError,
+    ExpressionTooDeeplyNestedError,
     InvalidAssignmentTargetError,
     MissingTokenError,
     TokenizerError,
@@ -29,6 +31,7 @@ __all__ = [
     "MissingTokenError",
     "UnexpectedTokenError",
     "InvalidAssignmentTargetError",
+    "ExpressionTooDeeplyNestedError",
     "AstBuilder",
     "Tokenizer",
 ]
