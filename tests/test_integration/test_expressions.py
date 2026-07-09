@@ -91,9 +91,14 @@ def test_assignment_expression_evaluates_to_the_assigned_value(run_source):
     assert output == "5\n"
 
 
-def test_comparison_operators_require_numeric_operands(run_source):
-    """비교 연산자(==, <, > 등)는 문자열끼리는 지원하지 않고 숫자만
-    받는다 — 문자열은 +로 연결(concat)만 가능하다.
+def test_ordering_operators_require_numeric_operands(run_source):
+    """순서 비교(<, > 등)는 문자열끼리는 지원하지 않고 숫자만 받는다
+    — 문자열은 +로 연결(concat)만 가능하다.
     """
-    assert run_source('print "a" == "a";') == "[Executor] Line 1: 피연산자는 반드시 숫자여야 합니다.\n"
     assert run_source('print "a" < "b";') == "[Executor] Line 1: 피연산자는 반드시 숫자여야 합니다.\n"
+
+
+def test_equality_operators_work_regardless_of_operand_type(run_source):
+    """==/!=는 순서 비교와 달리 숫자 여부와 무관하게 항상 비교 가능하다."""
+    assert run_source('print "a" == "a";') == "true\n"
+    assert run_source('print "a" != "b";') == "true\n"

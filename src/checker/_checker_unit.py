@@ -39,7 +39,12 @@ class CheckerUnit:
         self.class_stack = []
         self.loop_depth = 0
         self.locals = {}
-        self.scope_stack = []
+        # 전역 스코프도 Storage._scopes[0]처럼 항상 scope_stack의 맨 아래에
+        # 둔다. Storage.get()/set()이 전역도 다른 스코프와 똑같이 체인을
+        # 거슬러 올라가며 찾기 때문에(별도의 O(1) 전역 dict가 아님), 깊이
+        # 중첩된 곳에서 전역 변수를 참조해도 거리 계산 대상이어야 한다.
+        self.global_scope = set()
+        self.scope_stack = [self.global_scope]
         self.check_block(self.statements)
         return self.errors
 
@@ -57,11 +62,12 @@ class CheckerUnit:
             handler(statement, scope)
 
     def _resolve_variable_usage(self, statement):
-        """지역 변수 참조/대입마다 몇 단계 위 스코프에 있는지(distance) 계산해둔다.
+        """변수 참조/대입마다 몇 단계 위 스코프에 있는지(distance) 계산해둔다.
 
-        (요구사항_정리/실행전_최적화.md) 최상위(전역)에서 선언/참조되는
-        변수나, 함수 안에서 함수 바깥을 참조하는 경우는 기록하지 않는다
-        (Storage가 호출마다 지역 스코프 체인을 초기화하기 때문).
+        (요구사항_정리/실행전_최적화.md) 전역 스코프도 scope_stack의 맨
+        아래에 포함되어 있어서 계산 대상이다. 함수 안에서 함수를 감싸는
+        블록(전역이 아닌)을 참조하는 경우만 기록하지 않는다 - Storage가
+        호출마다 전역만 남기고 지역 스코프 체인을 초기화하기 때문이다.
         """
         for field in dataclasses.fields(statement):
             value = getattr(statement, field.name)
@@ -179,11 +185,12 @@ class CheckerUnit:
         # 파라미터도 이 함수(메서드) 스코프의 선언으로 취급한다.
         function_scope = ScopeChecker(self.expr_name_finder, self.errors, parent=parent)
 
-        # 함수 호출마다 Storage가 지역 스코프 체인을 초기화하므로(클로저
-        # 없음, src/executor/_function.py 참고) 거리 계산도 여기서 새로
-        # 시작해야 한다.
+        # 함수 호출마다 Storage가 전역만 남기고 지역 스코프 체인을
+        # 초기화하므로(클로저 없음, src/executor/_function.py의
+        # push_call_frame 참고) 거리 계산도 전역만 물려받고 나머지는
+        # 새로 시작해야 한다.
         outer_scope_stack = self.scope_stack
-        self.scope_stack = [set()]
+        self.scope_stack = [self.global_scope, set()]
         for param in params:
             function_scope.declare_name(param.lexeme, param)
             self._declare_local(param.lexeme)
