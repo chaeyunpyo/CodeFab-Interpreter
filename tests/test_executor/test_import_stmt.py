@@ -149,3 +149,28 @@ class TestImportErrors:
         mod.write_text("var x = 1;", encoding="utf-8")
         with pytest.raises(UndefinedPropertyError):
             _run(f'import "{mod}" alias lib; var r = lib.nonexistent;')
+
+    def test_if_블록_안에_숨은_순환_import도_CircularImportError(self, tmp_path):
+        """import는 반복문만 금지고 if는 허용되는데, 사전 순회가 최상위
+        문장만 훑으면 if 블록 속 import는 못 찾아 순환 감지를 놓치고
+        실행 시점에 RecursionError로 죽는다 (a -> b -> a 반복).
+        """
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text(f'if (true) {{ import "{b}" alias b_alias; }}', encoding="utf-8")
+        b.write_text(f'import "{a}" alias a_alias;', encoding="utf-8")
+        with pytest.raises(CircularImportError):
+            _run(f'import "{a}" alias a_alias;')
+
+    def test_함수_호출로_실행_중에만_드러나는_순환_import도_CircularImportError(self, tmp_path):
+        """Func 본문 속 import는 호출 시점에야 실행되므로 정적 사전 순회가
+        의도적으로 건너뛴다. 그 함수가 모듈 최상위에서 곧바로 호출되어
+        원래 import가 아직 실행 중인 채로 순환이 닫히면, 실행 단계
+        안전망(Importer.executing)이 대신 잡아야 한다.
+        """
+        a = tmp_path / "a.txt"
+        b = tmp_path / "b.txt"
+        a.write_text(f'Func f() {{ import "{b}" alias b_alias; }} f();', encoding="utf-8")
+        b.write_text(f'Func g() {{ import "{a}" alias a_alias; }} g();', encoding="utf-8")
+        with pytest.raises(CircularImportError):
+            _run(f'import "{a}" alias a_alias;')

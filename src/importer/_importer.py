@@ -10,11 +10,12 @@ Public API는 패키지 최상위(__init__.py)에서 re-export한다.
 """
 
 import os
+from contextlib import contextmanager
 
 from assembler import Assembler, AssemblerError
 from checker import CheckerUnit
 from executor.errors import ExecutionError
-from nodes.stmt import ImportStmt
+from nodes.stmt import BlockStmt, IfStmt, ImportStmt
 
 
 class PipelineImportError(ExecutionError):
@@ -76,11 +77,31 @@ class Importer:
     어떻게 실행할지는 호출하는 쪽이 정한다.
     """
 
+    # 정적 사전 순회(순환 import 조기 감지)가 내려가도 되는 구조. 이 문장이
+    # 실행되면 그 자식도 무조건 실행되는(=한 번이라도 실행되면 반드시
+    # 도달하는) 구조만 담는다. ForStmt/FunctionStmt/ClassStmt 본문은 반복
+    # 횟수/호출 여부에 따라 실행이 안 될 수도 있어 여기서 제외한다 — 새
+    # Stmt 타입이 생겨도 "항상 실행되는 자식이 있다"에 해당하면 여기 한
+    # 줄만 추가하면 된다.
+    _ALWAYS_EXECUTED_CHILDREN = {
+        BlockStmt: lambda stmt: stmt.statements,
+        IfStmt: lambda stmt: [branch for branch in (stmt.then_branch, stmt.else_branch) if branch is not None],
+    }
+
     def __init__(self):
         # import 대상 경로 -> assemble+check까지 끝낸 Stmt 목록 (Registry).
         self._module_cache = {}
-        # 지금 import 처리 중인 파일 경로 스택 (순환 import 감지용).
+        # 지금 import 처리 중인 파일 경로 스택 (assemble+check 단계의 순환 import 감지용).
         self._importing = []
+        # 지금 실행 중인 모듈 경로 스택 (실행 단계의 순환 import 감지용 안전망).
+        #
+        # 정적 사전 순회는 If/Block처럼 "실행되면 반드시 도달하는" 구조만
+        # 보수적으로 훑는다 — Func/Class 본문 속 import는 호출 시점에야
+        # 실행되므로 사전에 훑으면 실제로는 절대 안 일어날 순환을 오탐할
+        # 수 있어 일부러 제외했다. 대신 그렇게 놓친 순환은 실제로 실행될
+        # 때 여기서 잡아, RecursionError로 죽는 대신 CircularImportError로
+        # 알린다.
+        self._executing = []
 
     def import_module(self, path, keyword=None, base_dir=None):
         """path를 읽어 Assembler로 파싱하고 Checker로 정적 검사까지 마친
@@ -120,14 +141,48 @@ class Importer:
                 raise ModuleImportError(resolved, checker_errors, keyword)
 
             nested_base_dir = os.path.dirname(resolved)
-            for statement in statements:
-                if isinstance(statement, ImportStmt):
-                    self.import_module(statement.path.literal, statement.keyword, base_dir=nested_base_dir)
+            for import_stmt in self._iter_nested_import_stmts(statements):
+                self.import_module(import_stmt.path.literal, import_stmt.keyword, base_dir=nested_base_dir)
         finally:
             self._importing.pop()
 
         self._module_cache[resolved] = statements
         return statements
+
+    @classmethod
+    def _iter_nested_import_stmts(cls, statements):
+        """statements 안의 ImportStmt를, 무조건 실행되는 구조(if/block)까지
+        내려가며 찾는다. import는 반복문 안에서만 금지고 그 외 어디서든
+        가능하므로(요구사항_정리/import.md), if 블록 속에 있어도 순환
+        감지 대상이어야 한다.
+        """
+        for statement in statements:
+            if isinstance(statement, ImportStmt):
+                yield statement
+                continue
+            children_of = cls._ALWAYS_EXECUTED_CHILDREN.get(type(statement))
+            if children_of is not None:
+                yield from cls._iter_nested_import_stmts(children_of(statement))
+
+    @contextmanager
+    def executing(self, path, keyword=None, base_dir=None):
+        """모듈을 실제로 실행하는 동안 재진입을 감지하는 실행 단계 안전망.
+
+        정적 사전 순회가 의도적으로 건너뛰는 Func/Class 본문 속 import가
+        실제로 실행되며 순환을 이루면, 캐시 히트가 _importing 체크보다
+        먼저 걸려 정적 단계에서는 순환으로 안 잡히고 그대로 재실행을
+        반복해 RecursionError로 죽는다 — 여기서 그 재진입을 잡는다.
+        """
+        resolved = self._resolve_module_path(path, base_dir)
+        if resolved in self._executing:
+            cycle = " -> ".join(self._executing + [resolved])
+            raise CircularImportError(f"Circular import detected: {cycle}", keyword)
+
+        self._executing.append(resolved)
+        try:
+            yield
+        finally:
+            self._executing.pop()
 
     @staticmethod
     def _resolve_module_path(path, base_dir):
