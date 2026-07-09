@@ -89,7 +89,8 @@ class Importer:
     }
 
     def __init__(self):
-        # import 대상 경로 -> assemble+check까지 끝낸 Stmt 목록 (Registry).
+        # import 대상 경로 -> (assemble+check까지 끝낸 Stmt 목록, 그 안의
+        # 변수 거리(distance) 맵(checker.locals)) (Registry).
         self._module_cache = {}
         # 지금 import 처리 중인 파일 경로 스택 (assemble+check 단계의 순환 import 감지용).
         self._importing = []
@@ -118,6 +119,17 @@ class Importer:
         ImportedFileNotFoundError로, 순환 import면 CircularImportError로
         알린다.
         """
+        statements, _locals = self.import_module_with_locals(path, keyword, base_dir)
+        return statements
+
+    def import_module_with_locals(self, path, keyword=None, base_dir=None):
+        """import_module()과 동일하게 동작하지만, 대상 파일의 Stmt 목록과
+        함께 그 안의 변수 거리(distance) 맵(CheckerUnit.locals)도 반환한다.
+
+        Executor가 모듈 실행용 Storage(정적 바인딩 조회용 locals)를 만들 때
+        쓴다. import_module()은 이 값을 버리고 Stmt 목록만 돌려주는 얇은
+        래퍼다.
+        """
         resolved = self._resolve_module_path(path, base_dir)
 
         if resolved in self._module_cache:
@@ -136,18 +148,21 @@ class Importer:
             except AssemblerError as error:
                 raise ModuleImportError(resolved, [error], keyword) from error
 
-            checker_errors = self._check(statements)
+            checker = CheckerUnit(statements)
+            checker_errors = checker.check()
             if checker_errors:
                 raise ModuleImportError(resolved, checker_errors, keyword)
 
             nested_base_dir = os.path.dirname(resolved)
             for import_stmt in self._iter_nested_import_stmts(statements):
-                self.import_module(import_stmt.path.literal, import_stmt.keyword, base_dir=nested_base_dir)
+                self.import_module_with_locals(
+                    import_stmt.path.literal, import_stmt.keyword, base_dir=nested_base_dir
+                )
         finally:
             self._importing.pop()
 
-        self._module_cache[resolved] = statements
-        return statements
+        self._module_cache[resolved] = (statements, checker.locals)
+        return self._module_cache[resolved]
 
     @classmethod
     def _iter_nested_import_stmts(cls, statements):
@@ -203,7 +218,3 @@ class Importer:
         assembler = Assembler(source)
         assembler.execute()
         return assembler.ast
-
-    @staticmethod
-    def _check(statements):
-        return CheckerUnit(statements).check()

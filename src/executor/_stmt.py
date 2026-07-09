@@ -103,7 +103,7 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
     모듈용 Storage에 이 값을 이어받아 설정한다.
     """
     base_dir = storage._current_base_dir
-    statements = storage._importer.import_module(
+    statements, module_locals = storage._importer.import_module_with_locals(
         stmt.path.literal,
         keyword=stmt.keyword,
         base_dir=base_dir,
@@ -117,8 +117,11 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
         resolved = _os.path.normpath(path)
     module_base_dir = _os.path.dirname(_os.path.abspath(resolved))
 
-    # 모듈 전용 Storage를 만들고 Importer 캐시를 공유한다.
-    module_storage = Storage(importer=storage._importer)
+    # 모듈 전용 Storage를 만들고 Importer 캐시를 공유한다. locals를 넘겨야
+    # 모듈 안의 변수 조회도 정적 바인딩(O(depth) -> O(1))이 적용된다 —
+    # 안 넘기면 checker.locals가 계산되고도 버려져서 매번 스코프 체인을
+    # 선형 탐색하는 fallback 경로만 타게 된다.
+    module_storage = Storage(locals=module_locals, importer=storage._importer)
     module_storage._current_base_dir = module_base_dir
 
     # Storage 초기화 직후의 내장 이름(Array 등)은 namespace에 포함하지 않는다.

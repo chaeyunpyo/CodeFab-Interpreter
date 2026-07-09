@@ -61,6 +61,34 @@ def test_import_module_raises_module_import_error_for_checker_violations(tmp_pat
     assert "Can't return from top-level code." in str(excinfo.value.errors[0])
 
 
+# --- 정적 바인딩(변수 거리) 함께 반환 (요구사항_정리/실행전_최적화.md) ---
+
+def test_import_module_with_locals_returns_distance_map_alongside_statements(tmp_path):
+    """import_module_with_locals()는 Stmt 목록과 함께 CheckerUnit.locals(변수
+    거리 맵)도 반환해야 한다. import_module()은 이 값을 버리는 얇은 래퍼다.
+    """
+    path = _write(tmp_path / "sum.txt", "Func add(a, b) { return a + b; }\n")
+
+    statements, module_locals = Importer().import_module_with_locals(path)
+
+    fn = statements[0]
+    return_value_expr = fn.body[0].value  # a + b
+    assert module_locals[id(return_value_expr.left)] == 0
+    assert module_locals[id(return_value_expr.right)] == 0
+
+
+def test_import_module_with_locals_is_cached_together_with_statements(tmp_path):
+    """두 번째 호출도 캐시에서 같은 (statements, locals) 쌍을 그대로 반환해야 한다."""
+    path = _write(tmp_path / "sum.txt", "Func add(a, b) { return a + b; }\n")
+    importer = Importer()
+
+    first_statements, first_locals = importer.import_module_with_locals(path)
+    second_statements, second_locals = importer.import_module_with_locals(path)
+
+    assert second_statements is first_statements
+    assert second_locals is first_locals
+
+
 # --- 캐싱 (Singleton/Registry) ---
 
 def test_import_module_caches_result_and_does_not_reread_file_on_second_call(tmp_path):
