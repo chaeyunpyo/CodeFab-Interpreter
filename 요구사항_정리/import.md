@@ -88,12 +88,27 @@
   쪽(Executor)이 "최상위 프로그램 자체의 오류"와 "import한 파일의
   오류"를 타입만으로 구분할 수 없기 때문이다.
 
-Node 정의(`ImportStmt`)와 파일을 assemble+check하는 Importer는
-구현됐지만, alias를 실제 스코프에 바인딩해서 실행하는 것은 Executor
-쪽 구현이 필요해서 아직 미착수 상태다 — Executor가 ImportStmt를
-실행할 때 `Importer.import_module()`이 돌려주는 Stmt 목록을 새
-스코프에서 실행하고, 그 결과(선언된 이름들)를 alias 변수에 바인딩하는
-식이 될 것으로 예상한다.
+## 구현 현황 (Executor)
+
+alias를 실제 스코프에 바인딩해서 실행하는 것도 구현 완료됨
+(`src/executor/_stmt.py`의 `_execute_import_stmt`, 테스트:
+`tests/test_executor/test_import_stmt.py`).
+
+- `Importer.import_module_with_locals(path)`로 대상 파일의 Stmt 목록과
+  `checker.locals`(변수 거리 맵)를 함께 받아, 격리된 모듈 전용 `Storage`
+  (`Storage(locals=module_locals, importer=...)`)에서 실행한다. locals를
+  같이 넘겨야 모듈 안의 변수 조회도 정적 바인딩(O(depth) → O(1))이
+  적용된다 — 안 넘기면 계산된 거리가 버려져서 매번 스코프 체인을 선형
+  탐색하는 폴백 경로만 타게 된다.
+- 실행 후 모듈 전역 스코프에 새로 선언된 이름들을 `LoxNamespace`로 묶어
+  alias 변수에 대입한다(`sum.add(1, 2)`처럼 `.`으로 접근). 모듈 최상위
+  함수에는 `home_storage`를 심어, 그 함수가 호출될 때 자신이 속한
+  모듈의 전역(다른 모듈 함수/변수)을 볼 수 있게 한다.
+- 중첩 import의 상대 경로는 `_current_base_dir`를 이어받아 그 import문이
+  적힌 파일 기준으로 해석하고, 실행 단계에서도 `Importer.executing()`
+  컨텍스트 매니저로 재진입(Func/Class 본문 속 import가 실행되며 만드는
+  순환)을 감지해 `CircularImportError`로 끊는다(정적 사전 순회가
+  의도적으로 건너뛰는 경우의 안전망).
 
 ## 적용 가능한 디자인 패턴 (가산점)
 
