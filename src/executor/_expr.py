@@ -64,7 +64,7 @@ def _evaluate_literal(expr: LiteralExpr, storage: Storage) -> Any:
 
 def _evaluate_variable(expr: VariableExpr, storage: Storage) -> Any:
     try:
-        return storage.get(expr.name.lexeme)
+        return storage.get_resolved(expr, expr.name.lexeme)
     except UndefinedVariableError as e:
         e.token = expr.name
         raise
@@ -73,7 +73,7 @@ def _evaluate_variable(expr: VariableExpr, storage: Storage) -> Any:
 def _evaluate_assign(expr: AssignExpr, storage: Storage) -> Any:
     value = evaluate(expr.value, storage)
     try:
-        storage.set(expr.name.lexeme, value)
+        storage.set_resolved(expr, expr.name.lexeme, value)
     except UndefinedVariableError as e:
         e.token = expr.name
         raise
