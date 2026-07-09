@@ -531,3 +531,16 @@ def test_step26_keywords_are_case_sensitive(source):
         Token(TokenType.IDENTIFIER, source),
         Token(TokenType.EOF, ""),
     ]
+
+
+# --- 27단계: 추가 - 나머지(모듈로) 연산자 ---
+
+def test_step27_percent_operator():
+    """a % b 처럼 나머지를 구하는 데 쓰이는 '%' 단일 문자 토큰."""
+    tokenizer = Tokenizer("%")
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(TokenType.PERCENT, "%"),
+        Token(TokenType.EOF, ""),
+    ]

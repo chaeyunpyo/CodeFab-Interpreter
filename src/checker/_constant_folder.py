@@ -50,6 +50,11 @@ def _fold_binary_value(operator_token, left, right):
             return left / right
         return _NOT_FOLDABLE
 
+    if op == TokenType.PERCENT:
+        if _is_number(left) and _is_number(right) and right != 0:
+            return left % right
+        return _NOT_FOLDABLE
+
     if op == TokenType.PLUS:
         if _is_string(left) and _is_string(right):
             return left + right
