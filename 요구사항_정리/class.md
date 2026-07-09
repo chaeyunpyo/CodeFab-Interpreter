@@ -62,7 +62,7 @@
 
 ## 구현 현황 (Checker)
 
-정적 오류 5개는 `src/checker.py`에 구현 완료됨 (테스트: `tests/test_checker/test_checker_class.py`).
+정적 오류 5개는 `src/checker/`에 구현 완료됨 (테스트: `tests/test_checker/test_checker_class.py`).
 
 | 항목 | 구현된 메시지 |
 | --- | --- |

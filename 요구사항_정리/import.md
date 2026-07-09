@@ -41,7 +41,7 @@
 ## 구현 현황 (Checker)
 
 정적 오류 6개 중 Checker 담당 3개와 세부 규칙의 "상위 중복 import 금지"는
-`src/checker.py`에 구현 완료됨 (테스트: `tests/test_checker/test_checker_import.py`).
+`src/checker/`에 구현 완료됨 (테스트: `tests/test_checker/test_checker_import.py`).
 나머지 3개(import 문법 오류, 파일 없음, 순환 import)는 Assembler 담당이라
 여기 포함하지 않는다.
 
