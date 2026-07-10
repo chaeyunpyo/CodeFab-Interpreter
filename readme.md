@@ -169,6 +169,22 @@ var total = sum.add(1, 2);
 - 대상 파일이 없거나(`ImportedFileNotFoundError`), 서로를 순환 참조하거나(`CircularImportError`),
   문법/정적 검사를 통과하지 못하면(`ModuleImportError`) 오류가 발생한다.
 
+**디버깅용 커스텀 문장** (명세에는 없지만 개발 편의를 위해 추가, `print`처럼 괄호 없이 사용)
+```
+var g = 1;
+var x = 10;
+
+if (x > 0) {
+    var x = 99;   // 전역 x를 가림
+    var y = 20;
+    print_line;   // '=' 구분선 출력 (터미널 폭에 맞춤)
+    print_val;    // 현재 보이는 모든 변수 덤프
+}
+```
+- `print_line`은 터미널 폭(`shutil.get_terminal_size()`)에 맞춘 `=` 구분선을 출력한다.
+- `print_val`은 현재 지점에서 보이는 모든 스코프(전역/함수 인자/블록 지역)의 변수를 `[전역]`/`[로컬]` 라벨과 함께 한 번에 덤프한다. 이름이 겹치면(섀도잉) 가장 안쪽 스코프 값이 우선하고, `Array` 같은 내장 callable은 제외한다.
+- 둘 다 괄호를 붙이면(`print_line();`, `print_val();`) 문법 오류다.
+
 ## 기타 특이사항
 
 - 요구되는 Python 버전은 3.14 이상이다 (`pyproject.toml`의 `requires-python` 참고).
