@@ -136,3 +136,19 @@ class ImportStmt(Stmt):
     path: Token
     alias: Token
     line: int = field(default=1, kw_only=True, compare=False)
+
+
+@dataclass
+class PrintLineStmt(Stmt):
+    """구분선을 한 줄 출력하는 문장. print처럼 괄호 없이 쓴다. 예: print_line;"""
+
+    line: int = field(default=1, kw_only=True, compare=False)
+
+
+@dataclass
+class PrintValStmt(Stmt):
+    """현재 스코프에서 조회 가능한 변수를 전부 출력하는 문장.
+    print처럼 괄호 없이 쓴다. 예: print_val;
+    """
+
+    line: int = field(default=1, kw_only=True, compare=False)

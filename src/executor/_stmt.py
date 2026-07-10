@@ -10,11 +10,14 @@ from nodes import (
     FunctionStmt,
     IfStmt,
     ImportStmt,
+    PrintLineStmt,
     PrintStmt,
+    PrintValStmt,
     ReturnStmt,
     Stmt,
     VarDeclStmt,
 )
+from ._callable import LoxCallable
 from ._storage import Storage
 from ._signals import ReturnSignal
 from ._function import Function
@@ -32,6 +35,36 @@ def _execute_expression_stmt(stmt: ExpressionStmt, storage: Storage) -> None:
 def _execute_print_stmt(stmt: PrintStmt, storage: Storage) -> None:
     value = evaluate(stmt.expression, storage)
     print(stringify(value))
+
+
+def _execute_print_line_stmt(stmt: PrintLineStmt, storage: Storage) -> None:
+    import shutil
+
+    print("=" * shutil.get_terminal_size().columns)
+
+
+def _execute_print_val_stmt(stmt: PrintValStmt, storage: Storage) -> None:
+    """현재 시점에 조회 가능한 변수를 전부 출력한다.
+
+    가장 안쪽 스코프뿐 아니라 그 바깥의 모든 지역(블록/함수 파라미터)
+    스코프까지 전부 [로컬]로, 전역 스코프는 [전역]으로 표시한다
+    (Storage.all_local_scope_items() 참고). 내장 함수(Array 등
+    LoxCallable)는 사용자 변수가 아니므로 출력에서 제외한다.
+    """
+
+    global_items = {
+        name: value for name, value in storage.global_scope_items().items()
+        if not isinstance(value, LoxCallable)
+    }
+    if storage.scope_depth() > 1:
+        local_items = storage.all_local_scope_items()
+    else:
+        local_items = {}
+
+    for name, value in local_items.items():
+        print(f"[로컬] {name} = {stringify(value)}")
+    for name, value in global_items.items():
+        print(f"[전역] {name} = {stringify(value)}")
 
 
 def _execute_var_decl_stmt(stmt: VarDeclStmt, storage: Storage) -> None:
@@ -168,6 +201,8 @@ def _execute_import_stmt(stmt: ImportStmt, storage: Storage) -> None:
 _STMT_EXECUTORS: Dict[Type[Stmt], Callable[[Any, Storage], None]] = {
     ExpressionStmt: _execute_expression_stmt,
     PrintStmt: _execute_print_stmt,
+    PrintLineStmt: _execute_print_line_stmt,
+    PrintValStmt: _execute_print_val_stmt,
     VarDeclStmt: _execute_var_decl_stmt,
     BlockStmt: _execute_block_stmt,
     IfStmt: _execute_if_stmt,

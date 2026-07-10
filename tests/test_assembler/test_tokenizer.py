@@ -544,3 +544,23 @@ def test_step27_percent_operator():
         Token(TokenType.PERCENT, "%"),
         Token(TokenType.EOF, ""),
     ]
+
+
+# --- 28단계: 추가 - print_line / print_val (print처럼 괄호 없이 쓰는 문장 키워드) ---
+
+@pytest.mark.parametrize(
+    "source, expected_type",
+    [
+        ("print_line", TokenType.PRINT_LINE),
+        ("print_val", TokenType.PRINT_VAL),
+    ],
+)
+def test_step28_print_line_and_print_val_keywords(source, expected_type):
+    """print_line/print_val은 IDENTIFIER가 아니라 전용 키워드 타입이어야 한다."""
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    assert tokens == [
+        Token(expected_type, source),
+        Token(TokenType.EOF, ""),
+    ]

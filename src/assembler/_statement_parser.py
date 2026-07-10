@@ -7,7 +7,9 @@ from nodes import (
     FunctionStmt,
     IfStmt,
     ImportStmt,
+    PrintLineStmt,
     PrintStmt,
+    PrintValStmt,
     ReturnStmt,
     VarDeclStmt,
     VariableExpr,
@@ -37,6 +39,8 @@ class StatementParser:
             TokenType.RETURN: self.return_statement,
             TokenType.CLASS: self.class_statement,
             TokenType.IMPORT: self.import_statement,
+            TokenType.PRINT_LINE: self.print_line_statement,
+            TokenType.PRINT_VAL: self.print_val_statement,
         }
 
     # --- 선언 (declarations) ---
@@ -113,6 +117,18 @@ class StatementParser:
         value = self.expressions.parse()
         self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after value")
         return PrintStmt(expression=value, line=line)
+
+    def print_line_statement(self):
+        """`print_line` `;` 형태의 문장을 파싱한다. print처럼 표현식 없이 바로 종료한다."""
+        line = self.tokens.previous().line  # 'print_line' 키워드
+        self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after print_line")
+        return PrintLineStmt(line=line)
+
+    def print_val_statement(self):
+        """`print_val` `;` 형태의 문장을 파싱한다. print처럼 표현식 없이 바로 종료한다."""
+        line = self.tokens.previous().line  # 'print_val' 키워드
+        self.tokens.consume(TokenType.SEMICOLON, "Expected ';' after print_val")
+        return PrintValStmt(line=line)
 
     def block_statement(self):
         """`{` 로 시작하는 블록 문장을 파싱한다."""

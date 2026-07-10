@@ -61,5 +61,9 @@ class TokenType(Enum):
     IMPORT = auto()
     ALIAS = auto()
 
+    # 추가 - 시연용 내장 명령 (print처럼 괄호 없이 쓰는 문장 키워드)
+    PRINT_LINE = auto()
+    PRINT_VAL = auto()
+
     # 토큰 스트림 끝 (PDF p.28)
     EOF = auto()
