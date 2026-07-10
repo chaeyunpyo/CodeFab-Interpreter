@@ -7,16 +7,16 @@
 | 산술 연산자    | 5개 | `+`, `-`, `*`, `/`, `%`                                            |
 | 대입/비교 연산자 | 8개 | `=`, `>`, `<`, `==`, `>=`, `<=`, `=<`, `=>`                        |
 | 단항 연산자    | 2개 | `!`, `!=`                                                          |
-| 예약어       | 17개 | `var`, `if`, `else`, `for`, `print`, `true`, `false`, `and`, `or`, `Func`, `Class`, `return`, `This`, `Super`, `instanceof`, `import`, `alias` |
+| 예약어       | 19개 | `var`, `if`, `else`, `for`, `print`, `true`, `false`, `and`, `or`, `Func`, `Class`, `return`, `This`, `Super`, `instanceof`, `import`, `alias`, `print_line`, `print_val` |
 | 식별자       | 1개 | 변수 또는 함수 이름                                                       |
 | 리터럴       | 2개 | 숫자(`NUMBER`), 문자열(`STRING`)                                       |
 | 종료 토큰     | 1개 | `EOF`                                                             |
 
 ## 총 TokenType
 
-* **총 46개**
+* **총 48개**
 
-> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`, `PERCENT`)은 function/class/정적 배열/import/나머지 연산 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름.
+> 추가분(`LEFT_BRACKET`/`RIGHT_BRACKET`, `FUNC`~`ALIAS`, `PERCENT`, `PRINT_LINE`/`PRINT_VAL`)은 function/class/정적 배열/import/나머지 연산/시연용 내장 명령 요구사항 기준. 대소문자는 참고 문서 예시(`Func`, `Class`, `This`, `Super`, `return`, `instanceof`, `import`, `alias`)를 그대로 따름. `print_line`/`print_val`은 `print`와 마찬가지로 소문자 표기만 유효하다.
 >
 > **예약어는 대소문자를 구분하며, 이 문서에 나열된 표기만 유효하다.**
 > 예를 들어 `This`/`Super`는 대문자로만 써야 하고 `this`/`super`(소문자)는
@@ -75,6 +75,8 @@
 | 예약어 | INSTANCEOF    | instanceof       | 인스턴스 여부 확인 연산자 (추가) |
 | 예약어 | IMPORT        | import           | 파일 import (추가) |
 | 예약어 | ALIAS         | alias            | import 별칭 (추가) |
+| 예약어 | PRINT_LINE    | print_line       | 구분선(터미널 너비만큼 `=`) 출력, print처럼 괄호 없이 사용 (추가) |
+| 예약어 | PRINT_VAL     | print_val        | 현재 접근 가능한 변수 전부 출력([로컬]/[전역]), print처럼 괄호 없이 사용 (추가) |
 | 식별자 | IDENTIFIER    | a, num, x        | 변수 또는 함수 이름 |
 | 리터럴 | NUMBER        | 3, 100, 3.141592 | 숫자 값        |
 | 리터럴 | STRING        | "hello"          | 문자열 값       |
