@@ -1,5 +1,3 @@
-// import 데모용 보조 모듈. dfs_demo.ez가 alias로 불러와서 쓴다.
-
 Func edgeWeight(a, b) {
     return (a + b) % 7;
 }

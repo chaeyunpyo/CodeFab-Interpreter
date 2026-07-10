@@ -1,18 +1,56 @@
-// ============================================================
-// CodeFab 데모: 그래프 DFS(깊이 우선 탐색) + 이 언어의 거의 모든
-// 문법 요소(TokenType.md의 46개 토큰 종류)를 한 파일에서 보여준다.
-// 실행: python main.py run dfs_demo.ez
-//
-// 각 단계마다 print로 중간 상태를 보여주므로, 출력만 따라가도
-// 어디까지 정상 동작했는지 바로 확인할 수 있다.
-// ============================================================
-
 print "step 1: 보조 모듈 import";
 import "dfs_demo_utils.ez" alias utils;
-print "  import 완료, 모듈 이름 =";
-print utils.MODULE_NAME;
+print "  import 완료, 모듈 이름 = " + utils.MODULE_NAME;
 
-// --- 클래스 선언 / 상속(:) / this / 필드 / 배열(정적 배열) ---
+
+print "step 2: 산술/비교 연산자 확인";
+var x = 10;
+var y = 3;
+print "  x =";
+print x;
+print "  y =";
+print y;
+print "  x + y =";
+print x + y;   // expect: 13
+print "  x - y =";
+print x - y;   // expect: 7
+print "  x * y =";
+print x * y;   // expect: 30
+print "  x / y =";
+print x / y;   // expect: 3.3333333333333335
+print "  x % y =";
+print x % y;   // expect: 1
+print "  x > y =";
+print x > y;   // expect: true
+print "  x < y =";
+print x < y;   // expect: false
+print "  x >= y =";
+print x >= y;  // expect: true
+print "  x <= y =";
+print x <= y;  // expect: false
+print "  x =< y =";
+print x =< y;  // expect: false
+print "  x => y =";
+print x => y;  // expect: true
+print "  x == y =";
+print x == y;  // expect: false
+print "  x != y =";
+print x != y;  // expect: true
+
+print "step 3: 논리/단항 연산자 확인";
+print "  true and false =";
+print true and false;  // expect: false
+print "  true or false =";
+print true or false;   // expect: true
+print "  !(x == y) =";
+print !(x == y);        // expect: true
+
+print "step 4: 그래프 생성 (Class 선언, 상속, 배열)";
+//      0
+//     / \
+//    1   2
+//    |   |
+//    3---4
 Class Graph {
     init(size) {
         This.size = size;
@@ -47,25 +85,20 @@ Class WeightedGraph : Graph {
     }
 }
 
-print "step 2: 그래프 생성 (정점 5개)";
-//      0
-//     / \
-//    1   2
-//    |   |
-//    3---4
 var g = WeightedGraph(5);
 print "  Graph 인스턴스인가?";
 print (g instanceof Graph);         // expect: true
 print "  WeightedGraph 인스턴스인가?";
 print (g instanceof WeightedGraph); // expect: true
 
-print "step 3: 간선 추가";
+print "간선 5개 추가";
 g.addEdge(0, 1);
 g.addEdge(0, 2);
 g.addEdge(1, 3);
 g.addEdge(2, 4);
 g.addEdge(3, 4);
 
+print "step 5: 재귀 함수 Test";
 // --- 전역 변수 (함수 호출이 끝나도 값이 유지된다) ---
 var visitCount = 0;
 
@@ -79,6 +112,9 @@ Func dfs(graph, node, visited) {
     print "  visit node";
     print node;
 
+    print_line;
+    print_val;
+    print_line;
     var neighbor = 0;
     for (neighbor = 0; neighbor < graph.size; neighbor = neighbor + 1) {
         if (graph.hasEdge(node, neighbor) and !visited[neighbor]) {
@@ -87,7 +123,6 @@ Func dfs(graph, node, visited) {
     }
 }
 
-print "step 4: 방문 배열 초기화";
 var visited = Array(5);
 for (var i = 0; i < 5; i = i + 1) {
     visited[i] = false;
@@ -95,9 +130,9 @@ for (var i = 0; i < 5; i = i + 1) {
 print "  초기 방문 배열:";
 print visited;   // expect: [false, false, false, false, false]
 
-print "step 5: DFS 시작 (시작 노드 = 0)";
+print "DFS 시작 (시작 노드 = 0)";
 dfs(g, 0, visited);
-print "step 6: DFS 종료";
+print "DFS 종료";
 
 print "  최종 방문 배열:";
 print visited;      // expect: [true, true, true, true, true]
@@ -110,49 +145,20 @@ if (visitCount == 5) {
     print "  -> 일부 노드를 방문하지 못했다";
 }
 
-print "step 7: 산술/비교 연산자 확인";
-var x = 10;
-var y = 3;
-print "  x =";
-print x;
-print "  y =";
-print y;
-print "  x + y =";
-print x + y;   // expect: 13
-print "  x - y =";
-print x - y;   // expect: 7
-print "  x * y =";
-print x * y;   // expect: 30
-print "  x / y =";
-print x / y;   // expect: 3.3333333333333335
-print "  x % y =";
-print x % y;   // expect: 1
-print "  x > y =";
-print x > y;   // expect: true
-print "  x < y =";
-print x < y;   // expect: false
-print "  x >= y =";
-print x >= y;  // expect: true
-print "  x <= y =";
-print x <= y;  // expect: false
-print "  x =< y =";
-print x =< y;  // expect: false
-print "  x => y =";
-print x => y;  // expect: true
-print "  x == y =";
-print x == y;  // expect: false
-print "  x != y =";
-print x != y;  // expect: true
+print "step 6: 중첩 if 문 내 local 변수";
 
-print "step 8: 논리/단항 연산자 확인";
-print "  true and false =";
-print true and false;  // expect: false
-print "  true or false =";
-print true or false;   // expect: true
-print "  !(x == y) =";
-print !(x == y);        // expect: true
+var global_var = 10;
+if (global_var >= 10) {
+    var local_var1 = true;
+    print "global_var 이 10 이상이다.";
+    if (local_var1 == true) {
+        var local_var2 = "OK";
+        print_line;
+        print_val;
+        print_line;
+        print "";
+    }
+}
 
-print "step 9: 문자열 연결 확인";
-print "graph module: " + utils.MODULE_NAME; // expect: graph module: graph_utils
 
 print "=== 데모 종료 ===";
