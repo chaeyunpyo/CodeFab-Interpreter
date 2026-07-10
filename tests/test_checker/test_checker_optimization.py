@@ -25,6 +25,7 @@ src/checker/_checker_unit.py에 구현되어 있다. 아래는 그 설계 계약
 """
 
 from checker import CheckerUnit
+from checker._constant_folder import _NOT_FOLDABLE, ConstantFolder, _fold_unary_value
 from nodes.expr import AssignExpr, BinaryExpr, GroupingExpr, LiteralExpr, UnaryExpr, VariableExpr
 from nodes.stmt import BlockStmt, ExpressionStmt, ForStmt, PrintStmt
 from nodes.tokens import Token
@@ -308,3 +309,24 @@ def test_fold_applies_inside_function_body():
 
     assert isinstance(inner_decl.initializer, LiteralExpr)
     assert inner_decl.initializer.value == 3
+
+
+def test_fold_does_not_fold_unary_plus_on_non_number():
+    # var x = +"hi";  -- 단항 +는 숫자가 아니면 접을 수 없어 원본 그대로 둔다.
+    unary = UnaryExpr(operator=Token(TokenType.PLUS, "+"), right=LiteralExpr("hi"))
+
+    assert_not_folded(unary)
+
+
+def test_fold_value_returns_not_foldable_for_unsupported_unary_operator():
+    """_fold_unary_value는 Executor의 _evaluate_unary와 같은 연산자 집합
+    (MINUS/PLUS/BANG)만 지원한다. 파서는 이 세 개만 UnaryExpr로 만들어내지만,
+    함수 자체는 방어적으로 그 외 연산자에 대해 접을 수 없다고 답해야 한다.
+    """
+    assert _fold_unary_value(Token(TokenType.SLASH, "/"), 5.0) is _NOT_FOLDABLE
+
+
+def test_fold_returns_non_expr_value_unchanged():
+    """ConstantFolder.fold()는 Expr이 아닌 값이 들어오면 그대로 돌려준다."""
+    assert ConstantFolder().fold(42) == 42
+    assert ConstantFolder().fold(None) is None

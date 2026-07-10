@@ -42,6 +42,64 @@ def test_step_reaches_end_and_marks_finished():
     assert debugger.current_stmt is None
 
 
+def test_step_after_finished_is_a_no_op():
+    debugger = Debugger(_statements("print 1;\n"))
+    debugger.step()
+    assert debugger.finished is True
+
+    debugger.step()  # 이미 끝났으면 아무것도 하지 않아야 한다
+
+    assert debugger.finished is True
+
+
+def test_next_after_finished_is_a_no_op():
+    debugger = Debugger(_statements("print 1;\n"))
+    debugger.step()
+    assert debugger.finished is True
+
+    debugger.next()  # 이미 끝났으면 아무것도 하지 않아야 한다
+
+    assert debugger.finished is True
+
+
+def test_step_enters_then_branch_of_if_statement():
+    source = "var a = 0;\nif (true) {\n  a = 1;\n}\n"
+    debugger = Debugger(_statements(source))
+
+    debugger.step()  # var a = 0; 실행 후, if 조건이 참이라 then 내부의 a = 1; 에서 멈춘다
+
+    assert debugger.current_line == 3
+    assert debugger.storage.get("a") == 0.0  # 아직 a = 1; 실행 전
+
+    debugger.step()  # a = 1; 실행 후, if문 내부를 완전히 빠져나와 종료돼야 한다
+
+    assert debugger.finished is True
+    assert debugger.storage.get("a") == 1.0
+
+
+def test_step_enters_else_branch_of_if_statement():
+    source = "var a = 0;\nif (false) {\n  a = 1;\n} else {\n  a = 2;\n}\n"
+    debugger = Debugger(_statements(source))
+
+    debugger.step()  # var a = 0; 실행 후, 조건이 거짓이라 else 내부(a = 2;)에서 멈춘다
+
+    assert debugger.current_line == 5
+
+
+def test_step_enters_for_loop_body_each_iteration():
+    source = "var total = 0;\nfor (var i = 0; i < 2; i = i + 1) {\n  total = total + i;\n}\n"
+    debugger = Debugger(_statements(source))
+
+    seen_lines = []
+    while not debugger.finished:
+        seen_lines.append(debugger.current_line)
+        debugger.step()
+
+    # for 초기화(2)/조건-본문(3)이 반복 횟수만큼 여러 번 나타나야 한다.
+    assert seen_lines.count(3) == 2
+    assert debugger.storage.get("total") == 1.0
+
+
 # --- next: 최상위 Stmt 전체를 한 번에, 블록 내부로 진입 X ---
 
 def test_next_skips_over_block_interior():

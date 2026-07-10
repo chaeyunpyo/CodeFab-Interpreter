@@ -4,6 +4,7 @@ from executor import DivideByZeroError, TypeMismatchError, UndefinedVariableErro
 from nodes.expr import (
     AssignExpr,
     BinaryExpr,
+    Expr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
@@ -70,6 +71,20 @@ class TestEvaluateUnary:
         with pytest.raises(TypeMismatchError):
             evaluate(expr, storage)
 
+    def test_양수_부호는_숫자를_그대로_반환한다(self, storage):
+        expr = UnaryExpr(tok(TokenType.PLUS, "+"), LiteralExpr(5.0))
+        assert evaluate(expr, storage) == 5.0
+
+    def test_숫자가_아닌_값에_양수_부호를_쓰면_타입_오류가_발생한다(self, storage):
+        expr = UnaryExpr(tok(TokenType.PLUS, "+"), LiteralExpr("hi"))
+        with pytest.raises(TypeMismatchError):
+            evaluate(expr, storage)
+
+    def test_지원하지_않는_단항_연산자는_타입_오류를_발생시킨다(self, storage):
+        expr = UnaryExpr(tok(TokenType.SLASH, "/"), LiteralExpr(5.0))
+        with pytest.raises(TypeMismatchError):
+            evaluate(expr, storage)
+
 
 class TestEvaluateBinaryArithmetic:
     @pytest.mark.parametrize(
@@ -121,6 +136,11 @@ class TestEvaluateBinaryArithmetic:
 
     def test_문자열과_숫자를_더하면_타입_오류가_발생한다(self, storage):
         expr = BinaryExpr(LiteralExpr("hello"), tok(TokenType.PLUS, "+"), LiteralExpr(3.0))
+        with pytest.raises(TypeMismatchError):
+            evaluate(expr, storage)
+
+    def test_지원하지_않는_이항_연산자는_타입_오류를_발생시킨다(self, storage):
+        expr = BinaryExpr(LiteralExpr(1.0), tok(TokenType.AND, "and"), LiteralExpr(2.0))
         with pytest.raises(TypeMismatchError):
             evaluate(expr, storage)
 
@@ -245,6 +265,15 @@ class TestEvaluateLogical:
     def test_or는_왼쪽이_false면_오른쪽_값을_반환한다(self, storage):
         expr = LogicalExpr(LiteralExpr(False), tok(TokenType.OR, "or"), LiteralExpr(5.0))
         assert evaluate(expr, storage) == 5.0
+
+
+class TestEvaluateUnknownNode:
+    def test_등록되지_않은_노드_타입을_평가하면_NotImplementedError가_발생한다(self, storage):
+        class UnregisteredExpr(Expr):
+            pass
+
+        with pytest.raises(NotImplementedError):
+            evaluate(UnregisteredExpr(), storage)
 
 
 class TestStringify:

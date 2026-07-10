@@ -1,4 +1,5 @@
 from cli import run_debug
+from cli._debug_mode import _source_line_text
 
 
 # --- run_debug() - 디버그 모드 REPL (step/next/continue/break/watch/inspect) ---
@@ -8,6 +9,103 @@ def test_run_debug_reports_missing_file_without_crashing(capsys):
     run_debug("이런_파일은_없다.ez")
 
     assert capsys.readouterr().out != ""
+
+
+def test_run_debug_reports_assembler_error_without_entering_repl(tmp_path, capsys):
+    """구문 오류가 있는 파일은 REPL로 들어가지 않고 오류만 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("if (true)", encoding="utf-8")
+
+    run_debug(str(script))  # input()이 호출되면 여기서 멈춰서 테스트가 실패한다
+
+    out = capsys.readouterr().out
+    assert out != ""
+
+
+def test_run_debug_reports_checker_errors_without_entering_repl(tmp_path, capsys):
+    """checker 오류(예: 정의되지 않은 built-in 이름 재할당)가 있으면 REPL로
+    들어가지 않고 오류만 출력해야 한다.
+    """
+    script = tmp_path / "script.txt"
+    script.write_text("Array = 5;\n", encoding="utf-8")
+
+    run_debug(str(script))  # input()이 호출되면 여기서 멈춰서 테스트가 실패한다
+
+    out = capsys.readouterr().out
+    assert out != ""
+
+
+def test_run_debug_exits_cleanly_on_eof(monkeypatch, tmp_path, capsys):
+    """input()이 EOFError를 던지면(파이프 입력 종료 등) 크래시 없이 종료해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda prompt="": (_ for _ in ()).throw(EOFError()))
+
+    run_debug(str(script))
+
+    assert capsys.readouterr().out != ""
+
+
+def test_run_debug_unknown_command_shows_message(monkeypatch, tmp_path, capsys):
+    """알 수 없는 명령을 주면 크래시 없이 안내 메시지를 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    inputs = iter(["foo", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "알 수 없는 명령입니다: foo" in out
+
+
+def test_run_debug_breakpoints_command_lists_current_breakpoints(monkeypatch, tmp_path, capsys):
+    """breakpoints 명령은 현재 설정된 breakpoint 목록을 보여줘야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\nprint 2;\n", encoding="utf-8")
+    inputs = iter(["break 2", "breakpoints", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "[DEBUG] 현재 breakpoint: [2]" in out
+
+
+def test_run_debug_break_with_non_numeric_argument_shows_usage(monkeypatch, tmp_path, capsys):
+    """break에 줄 번호가 아닌 값을 주면 크래시 없이 사용법을 보여줘야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    inputs = iter(["break abc", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "사용법: break <줄번호>" in out
+
+
+def test_source_line_text_returns_placeholder_for_out_of_range_line_number():
+    """줄 번호가 없거나(None) 소스 범위를 벗어나면 자리표시자를 반환해야 한다."""
+    source_lines = ["print 1;"]
+
+    assert _source_line_text(source_lines, None) == "(알 수 없음)"
+    assert _source_line_text(source_lines, 99) == "(알 수 없음)"
+
+
+def test_run_debug_inspect_shows_no_globals_message_when_scope_is_empty(
+    monkeypatch, tmp_path, capsys
+):
+    """전역 스코프에 변수가 하나도 없으면 [전역] (없음)을 출력해야 한다."""
+    script = tmp_path / "script.txt"
+    script.write_text("print 1;\n", encoding="utf-8")
+    inputs = iter(["inspect", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    run_debug(str(script))
+
+    out = capsys.readouterr().out
+    assert "[전역] (없음)" in out
 
 
 def test_run_debug_runtime_error_during_step_does_not_crash_the_session(
