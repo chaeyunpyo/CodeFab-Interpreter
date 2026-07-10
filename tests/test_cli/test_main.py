@@ -30,6 +30,24 @@ def test_main_run_command_without_path_shows_usage(capsys):
     assert capsys.readouterr().out != ""
 
 
+def test_main_reads_argv_when_args_is_none(monkeypatch, capsys):
+    """args를 안 넘기면 sys.argv[1:]를 그대로 써야 한다."""
+    monkeypatch.setattr("sys.argv", ["factory"])
+    inputs = iter(["print 1;", "exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    main()
+
+    assert capsys.readouterr().out.endswith("1\n")
+
+
+def test_main_debug_command_without_path_shows_usage(capsys):
+    """factory debug (파일 경로 없이)은 크래시 없이 사용법 메시지를 출력해야 한다."""
+    main(["debug"])
+
+    assert capsys.readouterr().out != ""
+
+
 def test_main_debug_command_enters_debug_repl(monkeypatch, tmp_path, capsys):
     """factory debug <파일>은 디버그 모드로 진입해서 명령을 받아야 한다."""
     script = tmp_path / "script.txt"

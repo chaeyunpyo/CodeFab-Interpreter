@@ -6,6 +6,15 @@ from nodes.token_type import TokenType
 from nodes import *
 
 
+# --- ast 속성은 읽기 전용 (execute()를 통해서만 채워져야 함) ---
+
+def test_assembler_ast_property_cannot_be_set_directly():
+    sut = Assembler("print 1;")
+
+    with pytest.raises(Exception):
+        sut.ast = []
+
+
 # --- 산술 연산자 우선순위 (곱셈/나눗셈이 덧셈/뺄셈보다 먼저) ---
 
 @pytest.mark.parametrize(

@@ -355,6 +355,18 @@ class TestSuperExpr:
         with pytest.raises(UndefinedVariableError):
             evaluate(super_expr("move"), storage)
 
+    def test_부모_클래스가_없는_클래스에서_super를_쓰면_UndefinedPropertyError(self, storage):
+        # Class Robot { test() { return super.fly(); } }  -- superclass 자체가 없다.
+        execute(
+            declare_class("Robot", [
+                declare_method("test", [], [ret(call_expr(super_expr("fly")))]),
+            ]),
+            storage,
+        )
+        storage.define("r", evaluate(call_expr(var_expr("Robot")), storage))
+        with pytest.raises(UndefinedPropertyError):
+            evaluate(call_expr(field_get(var_expr("r"), "test")), storage)
+
 
 # ── InstanceOfExpr 평가 ───────────────────────────────────────────────────────
 

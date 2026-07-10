@@ -81,6 +81,14 @@ class TestLiveModuleScope:
 
         assert scope["y"] == 10
 
+    def test_삭제는_원본_dict에서_그대로_지워진다(self):
+        scope = {"y": 10}
+        view = LiveModuleScope(scope, excluded_names=())
+
+        del view["y"]
+
+        assert "y" not in scope
+
 
 # ── 기본 import 실행 ──────────────────────────────────────────────────────────
 
