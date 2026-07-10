@@ -54,6 +54,8 @@ class Tokenizer:
         "instanceof": TokenType.INSTANCEOF,
         "import": TokenType.IMPORT,
         "alias": TokenType.ALIAS,
+        "print_line": TokenType.PRINT_LINE,
+        "print_val": TokenType.PRINT_VAL,
     }
 
     def __init__(self, source: str):

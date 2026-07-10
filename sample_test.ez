@@ -57,6 +57,9 @@ var ga = 3;
 {
   var scoped = 2;
   {
+    print_line;
+    print_val;
+    print_line;
     var scoped = 7;
     {
       print scoped;         // expect: 7

@@ -16,6 +16,7 @@ Public API:
     storage.push_call_frame()    - 함수 호출 진입 (CallExpr 실행 시)
     storage.pop_call_frame()     - 함수 호출 종료 (CallExpr 실행 종료 시)
     storage.current_scope_items() - 현재(가장 안쪽) 스코프의 변수 목록 조회 (디버그 모드 inspect 용)
+    storage.all_local_scope_items() - 전역을 제외한 모든 지역 스코프를 합친 변수 목록 (print_val문 용)
     storage.global_scope_items() - 전역 스코프의 변수 목록 조회 (디버그 모드 inspect 용)
     storage.scope_depth()        - 현재 스코프 체인의 깊이 (1이면 전역 스코프뿐)
 """
@@ -119,6 +120,21 @@ class Storage:
         """
         from ._callable import LoxCallable
         return {k: v for k, v in self._scopes[-1].items() if not isinstance(v, LoxCallable)}
+
+    def all_local_scope_items(self) -> Dict[str, Any]:
+        """전역(index 0)을 제외한 모든 지역 스코프를 하나로 합쳐 반환한다.
+
+        print_val문용 - "지금 시점에 접근 가능한 모든 지역 변수"를 보여줘야
+        하므로, 가장 안쪽 스코프뿐 아니라 그 바깥의 블록/함수 파라미터
+        스코프까지 전부 포함한다. 바깥에서 안쪽 순서로 병합해서, 같은
+        이름을 안쪽 스코프가 가리면(shadowing) 안쪽 값이 남게 한다.
+        내장 함수(LoxCallable)는 사용자 변수가 아니므로 제외한다.
+        """
+        from ._callable import LoxCallable
+        merged: Dict[str, Any] = {}
+        for scope in self._scopes[1:]:
+            merged.update(scope)
+        return {k: v for k, v in merged.items() if not isinstance(v, LoxCallable)}
 
     def global_scope_items(self) -> Dict[str, Any]:
         """전역 스코프에 선언된 변수들을 이름->값 딕셔너리 사본으로 반환한다.

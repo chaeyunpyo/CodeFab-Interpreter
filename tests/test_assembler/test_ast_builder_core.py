@@ -221,6 +221,32 @@ def test_step6_print_statement():
     ]
 
 
+# --- 6-1단계: print_line / print_val 문 (print처럼 괄호 없이 쓰는 문장, 추가) ---
+
+def test_step6_1_print_line_statement():
+    """소스코드: print_line;"""
+    tokens = [
+        Token(TokenType.PRINT_LINE, "print_line"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [PrintLineStmt()]
+
+
+def test_step6_1_print_val_statement():
+    """소스코드: print_val;"""
+    tokens = [
+        Token(TokenType.PRINT_VAL, "print_val"),
+        Token(TokenType.SEMICOLON, ";"),
+        Token(TokenType.EOF, ""),
+    ]
+    builder = AstBuilder(tokens)
+
+    assert builder.build() == [PrintValStmt()]
+
+
 # --- 7단계: 조건문 및 블록 ---
 
 def test_step7_conditional_and_block():
